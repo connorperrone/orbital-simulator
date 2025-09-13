@@ -1,62 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!doctype html>
+<html lang="en">
+  <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Orbital Simulator</title>
     <style>
         body { margin: 0; }
     </style>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@v0.179.1/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@v0.179.1/examples/jsm/"
-            }
-        }
-    </script>
-</head>
-<body>
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-
-        camera.position.z = 5;
-        controls.update;
-
-        const light = new THREE.DirectionalLight(0xFFFFFF, 3);
-        light.position.set(1, 2, 7);
-        scene.add(light);
-
-        const sphere = new THREE.SphereGeometry(1, 64, 32);
-        const textureLoader = new THREE.TextureLoader();
-        const sphereMaterial = new THREE.MeshPhongMaterial({
-            map: textureLoader.load('./assets/textures/earth_color_map.png'),
-            bumpMap: textureLoader.load('./assets/textures/earth_topography_map.png'),
-            bumpScale: 0.03,
-        });
-        const earthMesh = new THREE.Mesh(sphere, sphereMaterial);
-        scene.add(earthMesh);
-
-        function animate() {
-            // Update controls because enableDamping is true
-            controls.update();
-
-            // Simulate movement of light for testing initial animate loop
-            light.position.set(1 + (count * 0.05), 2 + (count * 0.01), 7 + (count * 0.01));
-            count++;
-
-            renderer.render(scene, camera);
-        }
-        renderer.setAnimationLoop(animate);
-    </script>
-</body>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/main.js"></script>
+  </body>
 </html>
