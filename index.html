@@ -6,10 +6,66 @@
     <title>Orbital Simulator</title>
     <style>
         body { margin: 0; }
+        
+        label {
+          color: #FFFFFF;
+          font-family: monospace;
+          font-size: 14px;
+        }
+
+        #buttons {
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        #noradIdInput {
+          width: 250px;
+          padding: 8px 12px;
+          color: #00FFFF;
+          background-color: transparent;
+          border: 1px solid #00FFFF;
+          font-family: monospace;
+          box-shadow: 0 0 5px #00FFFF;
+          transition: all 0.3s ease;
+          outline: none;
+        }
+
+        #noradIdInput::placeholder {
+          color: rgba(0, 255, 255, 0.5);
+        }
+
+        #noradIdInput:focus {
+          box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
+        }
+
+        #fetchTleButton {
+          padding: 12px 24px;
+          color: #00FFFF;
+          background-color: transparent;
+          border: 1px solid #00FFFF;
+          font-family: monospace;
+          box-shadow: 0 0 5px #00FFFF;
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        
+        #fetchTleButton:hover {
+          background-color: rgba(0, 255, 255, 0.1);
+          box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
+        }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="buttons">
+      <label for="noradIdInput">NORAD ID (SATCAT)</label>
+      <input id="noradIdInput" type="text" placeholder="Enter a satellite's NORAD ID here">
+      <button id="fetchTleButton">Fetch TLE</button>
+    </div>
     <script type="module" src="/main.js"></script>
   </body>
 </html>
