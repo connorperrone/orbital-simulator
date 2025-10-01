@@ -12,6 +12,7 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
+    "satellite.js": "^6.0.1",
     "three": "^0.179.1"
   }
 }

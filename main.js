@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as satellite from 'satellite.js';
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
@@ -21,8 +22,24 @@ fetchTleButton.addEventListener('click', async () => {
     }
     console.log('Fetching TLE for NORAD ID:', noradId);
     try {
-        const tle = await fetchTle(noradId);
+        //const tle = await fetchTle(noradId);
+
+        // Hard-coded TLE data to reduce requests during development
+        const tle = 'ISS (ZARYA)             \n1 25544U 98067A   25274.49975208  .00018288  00000+0  33242-3 0  9997\n2 25544  51.6325 140.1428 0001055 183.8834 176.2147 15.49589290531650\n';
+        
         console.log(tle);
+        const tleLines = tle.split('\n');
+        console.log(tleLines);
+        if (tleLines.length != 4) {
+            alert('Invalid TLE data (not 4 lines long)');
+            console.error('Error: TLE data is not 4 lines');
+            return;
+        }
+        const tleLine1 = tleLines[1];
+        const tleLine2 = tleLines[2];
+        const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
+        const positionAndVelocity = satellite.propagate(satrec, new Date());
+        console.log(positionAndVelocity);
     } catch (error) {
         alert(error.message);
         console.error(`Caught error while fetching TLE: ${error}`);
