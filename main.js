@@ -1,6 +1,34 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+async function fetchTle(noradId) {
+    const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Error when sending request to fetch TLE: ${response.status}`);
+    }
+
+    return response.text();
+}
+
+const noradIdInput = document.getElementById('noradIdInput');
+const fetchTleButton = document.getElementById('fetchTleButton');
+fetchTleButton.addEventListener('click', async () => {
+    const noradId = noradIdInput.value.trim();
+    if (!noradId || isNaN(noradId) || noradId.length > 9) {
+        alert(`Unable to fetch TLE for ${noradId} since it is not a 1-9 digit number`);
+        return;
+    }
+    console.log('Fetching TLE for NORAD ID:', noradId);
+    try {
+        const tle = await fetchTle(noradId);
+        console.log(tle);
+    } catch (error) {
+        alert(error.message);
+        console.error(`Caught error while fetching TLE: ${error}`);
+    }
+});
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
