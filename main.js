@@ -174,7 +174,7 @@ function initialize() {
     const sphereGeometry = new THREE.SphereGeometry(1, 64, 32);
     const sphereMaterial = new THREE.MeshPhongMaterial({
         map: textureLoader.load('./assets/textures/earth_color_map.png'),
-        bumpMap: textureLoader.load('./assets/textures/earth_topography_map.png'),
+        bumpMap: textureLoader.load('./assets/textures/earth_topography_map.jpg'),
         bumpScale: 0.03,
     });
     const earthMesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
