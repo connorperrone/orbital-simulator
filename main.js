@@ -8,18 +8,21 @@ const renderer = new THREE.WebGLRenderer();
 const controls = new OrbitControls(camera, renderer.domElement);
 const light = new THREE.DirectionalLight(0xFFFFFF, 3);
 const textureLoader = new THREE.TextureLoader();
+
 const starCount = 10000;
+const maxOrbitPoints = 400;
 
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 
 let stars;
 let satelliteMesh;
-let orbitLine;
-let orbitPoints;
-let orbitPointsIndex = 3;
 let count = 1; // Initialized to 1 instead of 0 to prevent immediately updating the position (it was already set)
-
+let satrec;
+let positionAndVelocity;
+let date;
+let orbitPoints;
+let orbitPointsIndex;
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
@@ -44,19 +47,29 @@ fetchTleButton.addEventListener('click', async () => {
         // Hard-coded TLE data to reduce requests during development
         const tle = 'ISS (ZARYA)             \n1 25544U 98067A   25274.49975208  .00018288  00000+0  33242-3 0  9997\n2 25544  51.6325 140.1428 0001055 183.8834 176.2147 15.49589290531650\n';
         
-        console.log(tle);
         const tleLines = tle.split('\n');
-        console.log(tleLines);
         if (tleLines.length != 4) {
             alert('Invalid TLE data (not 4 lines long)');
-            console.error('Error: TLE data is not 4 lines');
+            console.error(`Error: TLE data is not 4 lines: \n${tle}`);
             return;
         }
         const tleLine1 = tleLines[1];
         const tleLine2 = tleLines[2];
-        const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
-        const positionAndVelocity = satellite.propagate(satrec, new Date());
-        console.log(positionAndVelocity);
+        satrec = satellite.twoline2satrec(tleLine1, tleLine2);
+        date = new Date();
+        positionAndVelocity = satellite.propagate(satrec, date);
+        // Dividing by 1,000 since each unit represents 1,000 km
+        satelliteMesh.position.set(
+            positionAndVelocity.position.x / 1000,
+            positionAndVelocity.position.y / 1000,
+            positionAndVelocity.position.z / 1000
+        );
+        
+        if (orbitPoints) {
+            const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
+            orbitPoints.geometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
+        }
+        orbitPointsIndex = 0;
     } catch (error) {
         alert(error.message);
         console.error(`Caught error while fetching TLE: ${error}`);
@@ -70,7 +83,7 @@ function createStars() {
     const starColors = new Float32Array(starCount * 4);
     const starColorTargets = new Float32Array(starCount);
     for (let i = 0; i < starCount; i++) {
-        const r = THREE.MathUtils.randFloat(100, 250);
+        const r = THREE.MathUtils.randFloat(200, 500);
         const theta = 2 * Math.PI * Math.random();
         const phi = Math.PI * Math.random();
         starPositions[(i * 3)] = r * Math.sin(theta) * Math.cos(phi);     // x
@@ -103,7 +116,7 @@ function createStars() {
     const starTexture = new THREE.CanvasTexture(canvas);
 
     const starMaterial = new THREE.PointsMaterial({
-        size: 1.25,
+        size: 2.5,
         vertexColors: true,
         transparent: true,
         blending: THREE.AdditiveBlending,
@@ -119,15 +132,6 @@ function animate() {
 
     // Simulate movement of light for testing initial animate loop
     light.position.set(1 + (count * 0.05), 2 + (count * 0.01), 7 + (count * 0.01));
-
-    // Initial testing for animating orbits
-    if (count % 10 == 0) {
-        if (orbitPointsIndex > orbitPoints.length - 2) {
-            orbitPointsIndex = 0;
-        }
-        satelliteMesh.position.set(orbitPoints[orbitPointsIndex], orbitPoints[orbitPointsIndex + 1], orbitPoints[orbitPointsIndex + 2])
-        orbitPointsIndex += 3;
-    }
 
     // Initial testing for animating stars
     if (count % 20 == 0) {
@@ -153,6 +157,28 @@ function animate() {
         starColorsAttribute.needsUpdate = true;
     }
 
+    // Propagate orbit if TLE data has been fetched
+    if (satrec && count % 2 == 0) {
+        date.setSeconds(date.getSeconds() + 30);
+
+        positionAndVelocity = satellite.propagate(satrec, date);
+        // Dividing by 1,000 since each unit represents 1,000 km
+        const x = positionAndVelocity.position.x / 1000;
+        const y = positionAndVelocity.position.y / 1000;
+        const z = positionAndVelocity.position.z / 1000;
+
+        const orbitPointsPositionAttribute = orbitPoints.geometry.getAttribute('position');
+        const orbitPointsPositions = orbitPointsPositionAttribute.array;
+        orbitPointsPositions[orbitPointsIndex * 3] = x;
+        orbitPointsPositions[orbitPointsIndex * 3 + 1] = y;
+        orbitPointsPositions[orbitPointsIndex * 3 + 2] = z;
+        orbitPointsPositionAttribute.needsUpdate = true;
+        
+        satelliteMesh.position.set(x, y, z);
+
+        orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
+    }
+
     // Update count for animation tests
     count++;
 
@@ -163,48 +189,42 @@ function initialize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    camera.position.z = 15;
     controls.enableDamping = true;
-
-    camera.position.z = 5;
+    controls.minDistance = 7;
+    controls.maxDistance = 50;
     controls.update;
 
     light.position.set(1, 2, 7);
     scene.add(light);
 
-    const sphereGeometry = new THREE.SphereGeometry(1, 64, 32);
-    const sphereMaterial = new THREE.MeshPhongMaterial({
+    // Letting each unit be 1,000 km, we get a radius of 6.378 units since Earth's radius is 6,378 km
+    const earthGeometry = new THREE.SphereGeometry(6.378, 64, 32);
+    const earthMaterial = new THREE.MeshPhongMaterial({
         map: textureLoader.load('./assets/textures/earth_color_map.png'),
         bumpMap: textureLoader.load('./assets/textures/earth_topography_map.jpg'),
         bumpScale: 0.03,
     });
-    const earthMesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earthMesh);
 
     stars = createStars();
     scene.add(stars);
 
-    const orbitEllipse = new THREE.EllipseCurve(0, 0, 1.5, 1.5, 0, 2 * Math.PI, false, 0);
-    const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitEllipse.getPoints(100));
-    orbitGeometry.rotateX(Math.PI / 6);
-    orbitGeometry.rotateY(Math.PI / 6);
-    const orbitMaterial = new THREE.LineBasicMaterial({color: 0x00FF00});
-    orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
-    scene.add(orbitLine);
-    
-    orbitPoints = orbitLine.geometry.getAttribute('position').array;
-    const pointGeometry = new THREE.SphereGeometry(0.01, 3, 2);
-    const pointMaterial = new THREE.MeshBasicMaterial({color: 0x0000FF});
-    for (let i = 0; i < orbitPoints.length; i += 3) {
-        const pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
-        pointMesh.position.set(orbitPoints[i], orbitPoints[i + 1], orbitPoints[i + 2]);
-        scene.add(pointMesh);
-    }
-
-    const satelliteGeoemtry = new THREE.SphereGeometry(0.05, 8, 8);
+    const satelliteGeoemtry = new THREE.SphereGeometry(0.15, 8, 8);
     const satelliteMaterial = new THREE.MeshBasicMaterial({color: 0xFFFFFF});
     satelliteMesh = new THREE.Mesh(satelliteGeoemtry, satelliteMaterial);
-    satelliteMesh.position.set(orbitPoints[0], orbitPoints[1], orbitPoints[2]);
     scene.add(satelliteMesh);
+
+    const orbitPointsGeometry = new THREE.BufferGeometry();
+    const orbitPointsMaterial = new THREE.PointsMaterial({
+        size: 0.08,
+        color: new THREE.Color(0x0000FF)
+    });
+    const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
+    orbitPointsGeometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
+    orbitPoints = new THREE.Points(orbitPointsGeometry, orbitPointsMaterial);
+    scene.add(orbitPoints);
 
     renderer.setAnimationLoop(animate);
 }
