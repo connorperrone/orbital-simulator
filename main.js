@@ -6,7 +6,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 const controls = new OrbitControls(camera, renderer.domElement);
-const light = new THREE.DirectionalLight(0xFFFFFF, 3);
+const sun = new THREE.DirectionalLight(0xFFFFFF, 3);
 const textureLoader = new THREE.TextureLoader();
 
 const starCount = 10000;
@@ -15,9 +15,10 @@ const maxOrbitPoints = 400;
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 
+let earthMesh;
 let stars;
 let satelliteMesh;
-let count = 1; // Initialized to 1 instead of 0 to prevent immediately updating the position (it was already set)
+let count = 0;
 let satrec;
 let positionAndVelocity;
 let date;
@@ -61,9 +62,9 @@ fetchTleButton.addEventListener('click', async () => {
         // Dividing by 1,000 since each unit represents 1,000 km
         satelliteMesh.position.set(
             positionAndVelocity.position.x / 1000,
-            positionAndVelocity.position.y / 1000,
-            positionAndVelocity.position.z / 1000
-        );
+            positionAndVelocity.position.z / 1000,
+            -positionAndVelocity.position.y / 1000
+        ); // x, z, -y to match Three JS' coordinate system
         
         if (orbitPoints) {
             const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
@@ -130,9 +131,6 @@ function animate() {
     // Update controls because enableDamping is true
     controls.update();
 
-    // Simulate movement of light for testing initial animate loop
-    light.position.set(1 + (count * 0.05), 2 + (count * 0.01), 7 + (count * 0.01));
-
     // Initial testing for animating stars
     if (count % 20 == 0) {
         const starColorsAttribute = stars.geometry.getAttribute('color');
@@ -158,23 +156,36 @@ function animate() {
     }
 
     // Propagate orbit if TLE data has been fetched
-    if (satrec && count % 2 == 0) {
+    if (satrec && count % 20 == 0) {
         date.setSeconds(date.getSeconds() + 30);
+
+        const gmst = satellite.gstime(date);
+        earthMesh.rotation.y = gmst;
+
+        const jday = satellite.jday(date);
+        const sunPos = satellite.sunPos(jday);
+        const sunPositionScalar = 100; // Render the sun far enough away to look realistic
+        const sunPosition = new THREE.Vector3(
+            sunPos.rsun[0], // x
+            sunPos.rsun[2], // z
+            -sunPos.rsun[1] // -y
+        );
+        sunPosition.multiplyScalar(sunPositionScalar);
+        sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
         positionAndVelocity = satellite.propagate(satrec, date);
         // Dividing by 1,000 since each unit represents 1,000 km
         const x = positionAndVelocity.position.x / 1000;
         const y = positionAndVelocity.position.y / 1000;
         const z = positionAndVelocity.position.z / 1000;
+        satelliteMesh.position.set(x, z, -y); // x, z, -y to match Three JS' coordinate system
 
         const orbitPointsPositionAttribute = orbitPoints.geometry.getAttribute('position');
         const orbitPointsPositions = orbitPointsPositionAttribute.array;
         orbitPointsPositions[orbitPointsIndex * 3] = x;
-        orbitPointsPositions[orbitPointsIndex * 3 + 1] = y;
-        orbitPointsPositions[orbitPointsIndex * 3 + 2] = z;
+        orbitPointsPositions[orbitPointsIndex * 3 + 1] = z;
+        orbitPointsPositions[orbitPointsIndex * 3 + 2] = -y;
         orbitPointsPositionAttribute.needsUpdate = true;
-        
-        satelliteMesh.position.set(x, y, z);
 
         orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
     }
@@ -195,8 +206,56 @@ function initialize() {
     controls.maxDistance = 50;
     controls.update;
 
-    light.position.set(1, 2, 7);
-    scene.add(light);
+    // Ambient light to allow some visibility for where the sun doesn't hit the Earth
+    const ambientLight = new THREE.AmbientLight(0x404040, 2.0);
+    scene.add(ambientLight);
+
+    // Create a group representing the ECI frame
+    const eciGroup = new THREE.Group();
+    eciGroup.rotation.z = -23.4 * Math.PI / 180; // Earth's axial tilt
+    scene.add(eciGroup);
+
+    // // Debug: Coordinates axes before rotation
+    // const xPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 0, 0)];
+    // const xLineGeoemtry = new THREE.BufferGeometry().setFromPoints(xPoints);
+    // const xLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
+    // const xLine = new THREE.Line(xLineGeoemtry, xLineMaterial);
+    // scene.add(xLine);
+
+    // const yPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0)];
+    // const yLineGeoemtry = new THREE.BufferGeometry().setFromPoints(yPoints);
+    // const yLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
+    // const yLine = new THREE.Line(yLineGeoemtry, yLineMaterial);
+    // scene.add(yLine);
+
+    // const zPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 10)];
+    // const zLineGeoemtry = new THREE.BufferGeometry().setFromPoints(zPoints);
+    // const zLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
+    // const zLine = new THREE.Line(zLineGeoemtry, zLineMaterial);
+    // scene.add(zLine);
+
+    // // Debug: Coordinates axes after rotation (in ECI frame)
+    // const xPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 0, 0)];
+    // const xLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(xPointsNew);
+    // const xLineMaterialNew = new THREE.LineBasicMaterial({color: 0xFF0000});
+    // const xLineNew = new THREE.Line(xLineGeoemtryNew, xLineMaterialNew);
+    // eciGroup.add(xLineNew);
+
+    // const yPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0)];
+    // const yLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(yPointsNew);
+    // const yLineMaterialNew = new THREE.LineBasicMaterial({color: 0x00FF00});
+    // const yLineNew = new THREE.Line(yLineGeoemtryNew, yLineMaterialNew);
+    // eciGroup.add(yLineNew);
+
+    // const zPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 10)];
+    // const zLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(zPointsNew);
+    // const zLineMaterialNew = new THREE.LineBasicMaterial({color: 0x0000FF});
+    // const zLineNew = new THREE.Line(zLineGeoemtryNew, zLineMaterialNew);
+    // eciGroup.add(zLineNew);
+
+    // Set an arbitrary initial position for the sun
+    sun.position.set(100, 0, 0);
+    eciGroup.add(sun);
 
     // Letting each unit be 1,000 km, we get a radius of 6.378 units since Earth's radius is 6,378 km
     const earthGeometry = new THREE.SphereGeometry(6.378, 64, 32);
@@ -205,8 +264,8 @@ function initialize() {
         bumpMap: textureLoader.load('./assets/textures/earth_topography_map.jpg'),
         bumpScale: 0.03,
     });
-    const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
-    scene.add(earthMesh);
+    earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+    eciGroup.add(earthMesh);
 
     stars = createStars();
     scene.add(stars);
@@ -214,7 +273,7 @@ function initialize() {
     const satelliteGeoemtry = new THREE.SphereGeometry(0.15, 8, 8);
     const satelliteMaterial = new THREE.MeshBasicMaterial({color: 0xFFFFFF});
     satelliteMesh = new THREE.Mesh(satelliteGeoemtry, satelliteMaterial);
-    scene.add(satelliteMesh);
+    eciGroup.add(satelliteMesh);
 
     const orbitPointsGeometry = new THREE.BufferGeometry();
     const orbitPointsMaterial = new THREE.PointsMaterial({
@@ -224,7 +283,7 @@ function initialize() {
     const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
     orbitPointsGeometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
     orbitPoints = new THREE.Points(orbitPointsGeometry, orbitPointsMaterial);
-    scene.add(orbitPoints);
+    eciGroup.add(orbitPoints);
 
     renderer.setAnimationLoop(animate);
 }
