@@ -14,6 +14,16 @@ const maxOrbitPoints = 400;
 
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
+const latitudeValue = document.getElementById('latitudeValue');
+const longitudeValue = document.getElementById('longitudeValue');
+const altitudeValue = document.getElementById('altitudeValue');
+const epochValue = document.getElementById('epochValue');
+const inclinationValue = document.getElementById('inclinationValue');
+const raanValue = document.getElementById('raanValue');
+const eccentricityValue = document.getElementById('eccentricityValue');
+const argPerigeeValue = document.getElementById('argPerigeeValue');
+const meanAnomalyValue = document.getElementById('meanAnomalyValue');
+const meanMotionValue = document.getElementById('meanMotionValue');
 
 let earthMesh;
 let stars;
@@ -44,10 +54,11 @@ fetchTleButton.addEventListener('click', async () => {
     console.log('Fetching TLE for NORAD ID:', noradId);
     try {
         // const tle = await fetchTle(noradId);
+        // console.log(tle);
 
         // Hard-coded TLE data to reduce requests during development
-        const tle = 'ISS (ZARYA)             \n1 25544U 98067A   25274.49975208  .00018288  00000+0  33242-3 0  9997\n2 25544  51.6325 140.1428 0001055 183.8834 176.2147 15.49589290531650\n';
-        
+        const tle = 'ISS (ZARYA)             \n1 25544U 98067A   25361.56640462  .00014449  00000+0  26180-3 0  9991\n2 25544  51.6320  69.0472 0003237 310.8255  49.2453 15.49876615545155\n';
+
         const tleLines = tle.split('\n');
         if (tleLines.length != 4) {
             alert('Invalid TLE data (not 4 lines long)');
@@ -57,6 +68,18 @@ fetchTleButton.addEventListener('click', async () => {
         const tleLine1 = tleLines[1];
         const tleLine2 = tleLines[2];
         satrec = satellite.twoline2satrec(tleLine1, tleLine2);
+        
+        // Update orbital elements
+        inclinationValue.textContent = satellite.radiansToDegrees(satrec.inclo).toFixed(3) + '°';
+        raanValue.textContent = satellite.radiansToDegrees(satrec.nodeo).toFixed(3) + '°';
+        eccentricityValue.textContent = satrec.ecco.toFixed(5);
+        argPerigeeValue.textContent = satellite.radiansToDegrees(satrec.argpo).toFixed(3) + '°';
+        meanAnomalyValue.textContent = satellite.radiansToDegrees(satrec.mo).toFixed(3) + '°';
+        meanMotionValue.textContent = satrec.no.toFixed(3) + ' rad/min';
+        const epoch = new Date(Date.UTC(satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr, 0, 0));
+        epoch.setTime(epoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
+        epochValue.textContent = epoch.toUTCString();
+
         date = new Date();
         positionAndVelocity = satellite.propagate(satrec, date);
         // Dividing by 1,000 since each unit represents 1,000 km
@@ -127,6 +150,17 @@ function createStars() {
     return new THREE.Points(starGeometry, starMaterial);
 }
 
+function updateOrbitData(positionAndVelocity, gmst) {
+    const geodetic = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
+    const latitude = satellite.degreesLat(geodetic.latitude);
+    const longitude = satellite.degreesLong(geodetic.longitude);
+    const altitude = geodetic.height;
+
+    latitudeValue.textContent = latitude.toFixed(5) + '°';
+    longitudeValue.textContent = longitude.toFixed(5) + '°';
+    altitudeValue.textContent = altitude.toFixed(2) + ' km';
+}
+
 function animate() {
     // Update controls because enableDamping is true
     controls.update();
@@ -174,6 +208,9 @@ function animate() {
         sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
         positionAndVelocity = satellite.propagate(satrec, date);
+
+        updateOrbitData(positionAndVelocity, gmst);
+
         // Dividing by 1,000 since each unit represents 1,000 km
         const x = positionAndVelocity.position.x / 1000;
         const y = positionAndVelocity.position.y / 1000;

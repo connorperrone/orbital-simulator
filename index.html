@@ -13,6 +13,13 @@
           font-size: 14px;
         }
 
+        .theme {
+          color: #00FFFF;
+          border: 1px solid #00FFFF;
+          font-family: monospace;
+          box-shadow: 0 0 5px #00FFFF;
+        }
+
         #buttons {
           position: absolute;
           top: 20px;
@@ -25,11 +32,7 @@
         #noradIdInput {
           width: 250px;
           padding: 8px 12px;
-          color: #00FFFF;
           background-color: transparent;
-          border: 1px solid #00FFFF;
-          font-family: monospace;
-          box-shadow: 0 0 5px #00FFFF;
           transition: all 0.3s ease;
           outline: none;
         }
@@ -44,11 +47,7 @@
 
         #fetchTleButton {
           padding: 12px 24px;
-          color: #00FFFF;
           background-color: transparent;
-          border: 1px solid #00FFFF;
-          font-family: monospace;
-          box-shadow: 0 0 5px #00FFFF;
           transition: all 0.3s ease;
           cursor: pointer;
         }
@@ -57,14 +56,102 @@
           background-color: rgba(0, 255, 255, 0.1);
           box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF;
         }
+
+        #orbitData {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        #positionData {
+          padding: 12px;
+          min-width: 250px;
+          background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .orbitDataRow {
+          display: flex;
+          justify-self: space-between;
+          margin-bottom: 4px;
+        }
+
+        .orbitDataLabel {
+          color: rgba(0, 255, 255, 0.8);
+          margin-right: 8px;
+        }
+
+        .orbitDataValue {
+          font-weight: bold;
+        }
+
+        #orbitalElementsLabel {
+          padding: 12px 0px 0px 0px;
+        }
+
+        #orbitalElements {
+          padding: 12px;
+          min-width: 250px;
+          background-color: rgba(255, 255, 255, 0.05);
+        }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="buttons">
       <label for="noradIdInput">NORAD ID (SATCAT)</label>
-      <input id="noradIdInput" type="text" placeholder="Enter a satellite's NORAD ID here">
-      <button id="fetchTleButton">Fetch TLE</button>
+      <input class="theme" id="noradIdInput" type="text" placeholder="Enter a satellite's NORAD ID here">
+      <button class="theme" id="fetchTleButton">Fetch TLE</button>
+    </div>
+    <div id="orbitData">
+      <label for="positionData">Positional Data</label>
+      <div class="theme" id="positionData">
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Latitude:</span>
+          <span class="orbitDataValue" id="latitudeValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Longitude:</span>
+          <span class="orbitDataValue" id="longitudeValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Altitude:</span>
+          <span class="orbitDataValue" id="altitudeValue"></span>
+        </div>
+      </div>
+      <label for="orbitalElements" id="orbitalElementsLabel">Orbital Elements</label>
+      <div class="theme" id="orbitalElements">
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Epoch:</span>
+          <span class="orbitDataValue" id="epochValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Inclination (i):</span>
+          <span class="orbitDataValue" id="inclinationValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">RAAN (Ω):</span>
+          <span class="orbitDataValue" id="raanValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Eccentricity (e):</span>
+          <span class="orbitDataValue" id="eccentricityValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Argument of Perigee (ω):</span>
+          <span class="orbitDataValue" id="argPerigeeValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Mean Anomaly (M_0):</span>
+          <span class="orbitDataValue" id="meanAnomalyValue"></span>
+        </div>
+        <div class="orbitDataRow">
+          <span class="orbitDataLabel">Mean Motion (n):</span>
+          <span class="orbitDataValue" id="meanMotionValue"></span>
+        </div>
+      </div>
     </div>
     <script type="module" src="/main.js"></script>
   </body>
