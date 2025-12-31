@@ -14,6 +14,9 @@ const maxOrbitPoints = 400;
 
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
+
+const pauseResumeButton = document.getElementById('pauseResumeButton');
+
 const latitudeValue = document.getElementById('latitudeValue');
 const longitudeValue = document.getElementById('longitudeValue');
 const altitudeValue = document.getElementById('altitudeValue');
@@ -34,6 +37,7 @@ let positionAndVelocity;
 let date;
 let orbitPoints;
 let orbitPointsIndex;
+let paused = true;
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
@@ -100,6 +104,10 @@ fetchTleButton.addEventListener('click', async () => {
     }
 });
 
+pauseResumeButton.addEventListener('click', async () => {
+    paused = !paused;
+    pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
+});
 
 function createStars() {
     const starGeometry = new THREE.BufferGeometry();
@@ -189,8 +197,8 @@ function animate() {
         starColorsAttribute.needsUpdate = true;
     }
 
-    // Propagate orbit if TLE data has been fetched
-    if (satrec && count % 20 == 0) {
+    // Propagate orbit if TLE data has been fetched and not paused
+    if (!paused && satrec && count % 20 == 0) {
         date.setSeconds(date.getSeconds() + 30);
 
         const gmst = satellite.gstime(date);
