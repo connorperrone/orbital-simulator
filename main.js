@@ -18,6 +18,9 @@ const fetchTleButton = document.getElementById('fetchTleButton');
 const timeStepInput = document.getElementById('timeStepInput');
 const timeStepUnitSelect = document.getElementById('timeStepUnit');
 const setTimeStepButton = document.getElementById('setTimeStepButton');
+const timeBetweenInput = document.getElementById('timeBetweenInput');
+const timeBetweenUnitSelect = document.getElementById('timeBetweenUnit');
+const setTimeBetweenButton = document.getElementById('setTimeBetweenButton');
 const simulationDateValue = document.getElementById('simulationDateValue');
 const pauseResumeButton = document.getElementById('pauseResumeButton');
 
@@ -43,6 +46,9 @@ const minutes = 2;
 const hours = 3;
 let timeStep = 30; // 30 seconds by default
 let timeStepUnit = seconds;
+let timeBetween = 250; // 250 milliseconds by default
+let timeBetweenUnit = milliseconds;
+let updateIntervalMs = 250; // The time between updates in milliseconds
 
 let satrec;
 let positionAndVelocity;
@@ -50,6 +56,7 @@ let date;
 let orbitPoints;
 let orbitPointsIndex;
 let paused = true;
+let lastUpdate = 0;
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
@@ -148,6 +155,29 @@ setTimeStepButton.addEventListener('click', async () => {
     }
 });
 
+setTimeBetweenButton.addEventListener('click', async () => {
+    const value = timeBetweenInput.valueAsNumber;
+    if (isNaN(value)) {
+        alert("Error: The time between updates must be a valid number and can't be blank.")
+        return;
+    }
+    timeBetween = value;
+    switch (timeBetweenUnitSelect.value) {
+        case 'milliseconds':
+            timeBetweenUnit = milliseconds;
+            updateIntervalMs = timeBetween;
+            break;
+        case 'seconds':
+            timeBetweenUnit = seconds;
+            updateIntervalMs = timeBetween * 1000;
+            break;
+        default:
+            console.log('Invalid time between updates unit. Setting to milliseconds...');
+            timeBetweenUnit = milliseconds;
+            break;
+    }
+});
+
 pauseResumeButton.addEventListener('click', async () => {
     paused = !paused;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
@@ -213,7 +243,7 @@ function updateOrbitData(positionAndVelocity, gmst) {
     altitudeValue.textContent = altitude.toFixed(2) + ' km';
 }
 
-function animate() {
+function animate(time) {
     // Update controls because enableDamping is true
     controls.update();
 
@@ -242,7 +272,8 @@ function animate() {
     }
 
     // Propagate orbit if TLE data has been fetched and not paused
-    if (!paused && satrec && count % 20 == 0) {
+    if (!paused && satrec && time - lastUpdate >= updateIntervalMs) {
+        lastUpdate = time;
         switch (timeStepUnit) {
             case milliseconds:
                 date.setMilliseconds(date.getMilliseconds() + timeStep);

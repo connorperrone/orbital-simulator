@@ -138,10 +138,10 @@
             <div class="group vertical">
                 <label>Time Step</label>
                 <div class="group">
-                    <input id="timeStepInput" type="number" value="1">
+                    <input id="timeStepInput" type="number" value="30">
                     <select id="timeStepUnit">
                         <option value="milliseconds">milliseconds</option>
-                        <option value="seconds">seconds</option>
+                        <option value="seconds" selected>seconds</option>
                         <option value="minutes">minutes</option>
                         <option value="hours">hours</option>
                     </select>
@@ -151,9 +151,9 @@
             <div class="group vertical" style="padding-top: 12px;">
                 <label>Time Between Position Updates</label>
                 <div class="group">
-                    <input id="timeBetweenInput" type="number" value="1">
+                    <input id="timeBetweenInput" type="number" value="250">
                     <select id="timeBetweenUnit">
-                        <option value="milliseconds">milliseconds</option>
+                        <option value="milliseconds" selected>milliseconds</option>
                         <option value="seconds">seconds</option>
                     </select>
                     <button id="setTimeBetweenButton">OK</button>
