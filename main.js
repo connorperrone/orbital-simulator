@@ -15,6 +15,10 @@ const maxOrbitPoints = 400;
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 
+const timeStepInput = document.getElementById('timeStepInput');
+const timeStepUnitSelect = document.getElementById('timeStepUnit');
+const setTimeStepButton = document.getElementById('setTimeStepButton');
+const simulationDateValue = document.getElementById('simulationDateValue');
 const pauseResumeButton = document.getElementById('pauseResumeButton');
 
 const latitudeValue = document.getElementById('latitudeValue');
@@ -32,6 +36,14 @@ let earthMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
+
+const milliseconds = 0;
+const seconds = 1;
+const minutes = 2;
+const hours = 3;
+let timeStep = 30; // 30 seconds by default
+let timeStepUnit = seconds;
+
 let satrec;
 let positionAndVelocity;
 let date;
@@ -84,7 +96,8 @@ fetchTleButton.addEventListener('click', async () => {
         epoch.setTime(epoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
         epochValue.textContent = epoch.toUTCString();
 
-        date = new Date();
+        // date = new Date();
+        date = epoch;
         positionAndVelocity = satellite.propagate(satrec, date);
         // Dividing by 1,000 since each unit represents 1,000 km
         satelliteMesh.position.set(
@@ -98,9 +111,40 @@ fetchTleButton.addEventListener('click', async () => {
             orbitPoints.geometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
         }
         orbitPointsIndex = 0;
+
+        // Update Simulation Controls panel
+        simulationDateValue.textContent = date.toUTCString();
+        paused = false;
     } catch (error) {
         alert(error.message);
         console.error(`Caught error while fetching TLE: ${error}`);
+    }
+});
+
+setTimeStepButton.addEventListener('click', async () => {
+    const value = timeStepInput.valueAsNumber;
+    if (isNaN(value)) {
+        alert("Error: The time step must be a valid number and can't be blank.")
+        return;
+    }
+    timeStep = value;
+    switch (timeStepUnitSelect.value) {
+        case 'milliseconds':
+            timeStepUnit = milliseconds;
+            break;
+        case 'seconds':
+            timeStepUnit = seconds;
+            break;
+        case 'minutes':
+            timeStepUnit = minutes;
+            break;
+        case 'hours':
+            timeStepUnit = hours;
+            break;
+        default:
+            console.log('Invalid time step unit. Setting to seconds...');
+            timeStepUnit = seconds;
+            break;
     }
 });
 
@@ -199,7 +243,26 @@ function animate() {
 
     // Propagate orbit if TLE data has been fetched and not paused
     if (!paused && satrec && count % 20 == 0) {
-        date.setSeconds(date.getSeconds() + 30);
+        switch (timeStepUnit) {
+            case milliseconds:
+                date.setMilliseconds(date.getMilliseconds() + timeStep);
+                break;
+            case seconds:
+                date.setSeconds(date.getSeconds() + timeStep);
+                break;
+            case minutes:
+                date.setMinutes(date.getMinutes() + timeStep);
+                break;
+            case hours:
+                date.setHours(date.getHours() + timeStep);
+                break;
+            default:
+                console.log('Invalid time step unit. Setting to seconds...');
+                timeStepUnit = seconds;
+                date.setSeconds(date.getSeconds() + timeStep);
+                break;
+        }
+        simulationDateValue.textContent = date.toUTCString();
 
         const gmst = satellite.gstime(date);
         earthMesh.rotation.y = gmst;

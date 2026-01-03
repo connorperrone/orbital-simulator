@@ -71,7 +71,7 @@
 
       input {
         flex-grow: 1;
-        /* min-width: 0; */
+        min-width: 0;
       }
 
       button {
@@ -135,14 +135,7 @@
 
         <div class="panel">
             <div class="panelHeader">Simulation Controls</div>
-            <div class="group">
-                <button id="pauseResumeButton" style="flex: 1;">Pause</button>
-                <select id="timeDirection" style="flex: 1;">
-                    <option value="Forward">Forward</option>
-                    <option value="Reverse">Reverse</option>
-                </select>
-            </div>
-            <div class="group vertical" style="padding-top: 12px;">
+            <div class="group vertical">
                 <label>Time Step</label>
                 <div class="group">
                     <input id="timeStepInput" type="number" value="1">
@@ -152,9 +145,31 @@
                         <option value="minutes">minutes</option>
                         <option value="hours">hours</option>
                     </select>
+                    <button id="setTimeStepButton">OK</button>
                 </div>
             </div>
-            <button id="setTimeStepButton">Set Time Step</button>
+            <div class="group vertical" style="padding-top: 12px;">
+                <label>Time Between Position Updates</label>
+                <div class="group">
+                    <input id="timeBetweenInput" type="number" value="1">
+                    <select id="timeBetweenUnit">
+                        <option value="milliseconds">milliseconds</option>
+                        <option value="seconds">seconds</option>
+                    </select>
+                    <button id="setTimeBetweenButton">OK</button>
+                </div>
+            </div>
+            <div class="group vertical" style="padding-top: 12px;">
+                <label>Simulation Date</label>
+                <span class="dataValue" id="simulationDateValue">N/A</span>
+            </div>
+            <div class="group">
+                <button id="pauseResumeButton" style="flex: 1;">Pause</button>
+                <select id="timeDirection" style="flex: 1;">
+                    <option value="Forward">Forward</option>
+                    <option value="Reverse">Reverse</option>
+                </select>
+            </div>
         </div>
     </div>
 
