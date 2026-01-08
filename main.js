@@ -12,6 +12,11 @@ const textureLoader = new THREE.TextureLoader();
 const starCount = 10000;
 const maxOrbitPoints = 400;
 
+const tleOrbitTab = document.getElementById('tleOrbitTab');
+const tleOrbitTabContent = document.getElementById('tleOrbitTabContent');
+const customOrbitTab = document.getElementById('customOrbitTab');
+const customOrbitTabContent = document.getElementById('customOrbitTabContent');
+
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 
@@ -57,6 +62,26 @@ let orbitPoints;
 let orbitPointsIndex;
 let paused = true;
 let lastUpdate = 0;
+
+tleOrbitTab.addEventListener('click', () => {
+    // Switch to this tab if it is not already selected
+    if (!tleOrbitTab.classList.contains('selected') && tleOrbitTabContent.classList.contains('hidden')) {
+        tleOrbitTab.classList.add('selected');
+        customOrbitTab.classList.remove('selected');
+        tleOrbitTabContent.classList.remove('hidden');
+        customOrbitTabContent.classList.add('hidden');
+    }
+});
+
+customOrbitTab.addEventListener('click', () => {
+    // Switch to this tab if it is not already selected
+    if (!customOrbitTab.classList.contains('selected') && customOrbitTabContent.classList.contains('hidden')) {
+        customOrbitTab.classList.add('selected');
+        tleOrbitTab.classList.remove('selected');
+        customOrbitTabContent.classList.remove('hidden');
+        tleOrbitTabContent.classList.add('hidden');
+    }
+});
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;

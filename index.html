@@ -117,20 +117,82 @@
         color: #FFFFFF;
         font-weight: bold;
       }
+
+      .tab {
+        border: 1px solid rgba(0, 255, 255, 0.5);
+        border-bottom-left-radius: 4px;
+        border-bottom-right-radius: 4px;
+        border-top: none;
+        color: #FFFFFF;
+        cursor: pointer;
+        opacity: 0.8;
+        padding: 4px;
+      }
+
+      .tab:hover {
+        opacity: 0.7;
+      }
+
+      .tab.selected {
+        background-color: rgba(0, 255, 255, 0.1);
+        border: 1px solid rgba(0, 255, 255, 0.5);
+        border-top: none;
+        color: var(--theme-color);
+        cursor: default;
+        font-weight: bold;
+        opacity: 1.0;
+      }
+
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="leftColumn">
         <div class="panel">
-            <div class="panelHeader">Satellite Selection</div>
-            <div class="group vertical">
-                <label for="noradIdInput">NORAD ID (SATCAT)</label>
-                <div class="group">
-                    <input id="noradIdInput" type="text" placeholder="e.g. 25544">
-                    <button id="fetchTleButton">Fetch TLE</button>
-                </div>
+          <div>
+            <div class="panelHeader">Orbit Specification</div>
+            <div class="group" style="gap: 2px;">
+              <span id="tleOrbitTab" class="tab selected">From TLE Data</span>
+              <span id="customOrbitTab" class="tab">Custom Orbit</span>
             </div>
+          </div>
+          <div id="tleOrbitTabContent" class="group vertical">
+            <label for="noradIdInput">NORAD ID (SATCAT)</label>
+            <div class="group">
+                <input id="noradIdInput" type="text" placeholder="e.g. 25544">
+                <button id="fetchTleButton">Fetch TLE</button>
+            </div>
+          </div>
+          <div id="customOrbitTabContent" class="group vertical hidden" style="gap: 12px;">
+            <div class="group vertical">
+              <label for="semiMajorAxisInput">Semi-major axis (a)</label>
+              <input id="semiMajorAxisInput" type="number" min="6500" placeholder="[6500, inf.) kilometers">
+            </div>
+            <div class="group vertical">
+              <label for="eccentricityInput">Eccentricity (e)</label>
+              <input id="eccentricityInput" type="number" min="0" max="0.99" step="0.01" placeholder="0 ≤ e < 1">
+            </div>
+            <div class="group vertical">
+              <label for="inclinationInput">Inclination (i)</label>
+              <input id="inclinationInput" type="number" min="0" max="180" step="0.01" placeholder="[0°, 180°]">
+            </div>
+            <div class="group vertical">
+              <label for="raanInput">RAAN (Ω):</label>
+              <input id="raanInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+            </div>
+            <div class="group vertical">
+              <label for="argPerigeeInput">Argument of Perigee (ω)</label>
+              <input id="argPerigeeInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+            </div>
+            <div class="group vertical">
+              <label for="trueAnomalyInput">True Anomaly (v)</label>
+              <input id="trueAnomalyInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+            </div>
+            <button id="setOrbitButton">Set Orbit</button>
+          </div>
         </div>
 
         <div class="panel">
