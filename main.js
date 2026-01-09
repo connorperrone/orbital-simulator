@@ -50,6 +50,7 @@ const meanMotionValue = document.getElementById('meanMotionValue');
 
 let earthMesh;
 let equatorialPlaneMesh;
+let eclipticMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
@@ -521,6 +522,10 @@ function initialize() {
     equatorialPlaneMesh = new THREE.GridHelper(30, 30, 0x888888);
     equatorialPlaneMesh.visible = false;
     eciGroup.add(equatorialPlaneMesh);
+    
+    eclipticMesh = new THREE.GridHelper(30, 30, 0x0000FF, 0x0000FF);
+    eclipticMesh.visible = false;
+    scene.add(eclipticMesh);
 
     semiMajorAxisMesh = createSemiMajorAxisMesh();
     eciGroup.add(semiMajorAxisMesh);
@@ -551,6 +556,9 @@ function initialize() {
                     break;
                 case 'equatorialPlaneVisibilityButton':
                     equatorialPlaneMesh.visible = visible;
+                    break;
+                case 'eclipticVisibilityButton':
+                    eclipticMesh.visible = visible;
                     break;
             }
         });
