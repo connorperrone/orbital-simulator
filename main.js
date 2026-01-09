@@ -20,6 +20,14 @@ const customOrbitTabContent = document.getElementById('customOrbitTabContent');
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 
+const semiMajorAxisInput = document.getElementById('semiMajorAxisInput');
+const eccentricityInput = document.getElementById('eccentricityInput');
+const inclinationInput = document.getElementById('inclinationInput');
+const raanInput = document.getElementById('raanInput');
+const argPerigeeInput = document.getElementById('argPerigeeInput');
+const trueAnomalyInput = document.getElementById('trueAnomalyInput');
+const setOrbitButton = document.getElementById('setOrbitButton');
+
 const timeStepInput = document.getElementById('timeStepInput');
 const timeStepUnitSelect = document.getElementById('timeStepUnit');
 const setTimeStepButton = document.getElementById('setTimeStepButton');
@@ -44,6 +52,19 @@ let earthMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
+
+// True if user has defined custom orbit, false if propagating with TLE data
+let customOrbit = false;
+
+let customSemiMajorAxis;
+let customEccentricity;
+let customInclination;
+let customRaan;
+let customArgPerigee;
+let customTrueAnomaly;
+
+// Shapes for the user to visualize the custom orbital elements as they change
+let semiMajorAxisMesh;
 
 const milliseconds = 0;
 const seconds = 1;
@@ -153,7 +174,18 @@ fetchTleButton.addEventListener('click', async () => {
     }
 });
 
-setTimeStepButton.addEventListener('click', async () => {
+setOrbitButton.addEventListener('click', () => {
+    customSemiMajorAxis = semiMajorAxisInput.valueAsNumber;
+    customEccentricity = eccentricityInput.valueAsNumber;
+    customInclination = inclinationInput.valueAsNumber;
+    customRaan = raanInput.valueAsNumber;
+    customArgPerigee = argPerigeeInput.valueAsNumber;
+    customTrueAnomaly = trueAnomalyInput.valueAsNumber;
+
+    customOrbit = true;
+});
+
+setTimeStepButton.addEventListener('click', () => {
     const value = timeStepInput.valueAsNumber;
     if (isNaN(value)) {
         alert("Error: The time step must be a valid number and can't be blank.")
@@ -180,7 +212,7 @@ setTimeStepButton.addEventListener('click', async () => {
     }
 });
 
-setTimeBetweenButton.addEventListener('click', async () => {
+setTimeBetweenButton.addEventListener('click', () => {
     const value = timeBetweenInput.valueAsNumber;
     if (isNaN(value)) {
         alert("Error: The time between updates must be a valid number and can't be blank.")
@@ -203,10 +235,38 @@ setTimeBetweenButton.addEventListener('click', async () => {
     }
 });
 
-pauseResumeButton.addEventListener('click', async () => {
+pauseResumeButton.addEventListener('click', () => {
     paused = !paused;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
+
+function createSemiMajorAxisMesh() {
+    const numSegments = 128;
+    const shapeGeometry = new THREE.BufferGeometry();
+    const shapePositions = new Float32Array((numSegments + 1) * 3);
+    shapeGeometry.setAttribute('position', new THREE.BufferAttribute(shapePositions, 3));
+    const shapeMaterial = new THREE.LineBasicMaterial({color: 0x00FFFF});
+    semiMajorAxisMesh = new THREE.LineLoop(shapeGeometry, shapeMaterial);
+    return semiMajorAxisMesh;
+}
+
+function updateSemiMajorAxisMesh() {
+    let a = parseFloat(semiMajorAxisInput.value);
+    if (isNaN(a) || a < 0) a = 7000;
+    const r = a / 1000;
+    const positionAttribute = semiMajorAxisMesh.geometry.getAttribute('position');
+    const positions = positionAttribute.array;
+    const numSegments = 128;
+    for (let i = 0; i <= numSegments; i++) {
+        const theta = 2 * Math.PI * (i / numSegments);
+
+        positions[i * 3] = r * Math.cos(theta);
+        positions[(i * 3) + 1] = 0;
+        positions[(i * 3) + 2] = r * Math.sin(theta);
+    }
+    
+    positionAttribute.needsUpdate = true;
+}
 
 function createStars() {
     const starGeometry = new THREE.BufferGeometry();
@@ -296,62 +356,70 @@ function animate(time) {
         starColorsAttribute.needsUpdate = true;
     }
 
-    // Propagate orbit if TLE data has been fetched and not paused
-    if (!paused && satrec && time - lastUpdate >= updateIntervalMs) {
-        lastUpdate = time;
-        switch (timeStepUnit) {
-            case milliseconds:
-                date.setMilliseconds(date.getMilliseconds() + timeStep);
-                break;
-            case seconds:
-                date.setSeconds(date.getSeconds() + timeStep);
-                break;
-            case minutes:
-                date.setMinutes(date.getMinutes() + timeStep);
-                break;
-            case hours:
-                date.setHours(date.getHours() + timeStep);
-                break;
-            default:
-                console.log('Invalid time step unit. Setting to seconds...');
-                timeStepUnit = seconds;
-                date.setSeconds(date.getSeconds() + timeStep);
-                break;
+    // Propagate orbit if not paused
+    if (!paused) {
+        if (customOrbit) {
+            // Propagate with the custom orbital elements defined by the user
+
+
+        } else if (satrec && time - lastUpdate >= updateIntervalMs) {
+            // Propagate with TLE data if it exists and the update interval has passed
+
+            lastUpdate = time;
+            switch (timeStepUnit) {
+                case milliseconds:
+                    date.setMilliseconds(date.getMilliseconds() + timeStep);
+                    break;
+                case seconds:
+                    date.setSeconds(date.getSeconds() + timeStep);
+                    break;
+                case minutes:
+                    date.setMinutes(date.getMinutes() + timeStep);
+                    break;
+                case hours:
+                    date.setHours(date.getHours() + timeStep);
+                    break;
+                default:
+                    console.log('Invalid time step unit. Setting to seconds...');
+                    timeStepUnit = seconds;
+                    date.setSeconds(date.getSeconds() + timeStep);
+                    break;
+            }
+            simulationDateValue.textContent = date.toUTCString();
+
+            const gmst = satellite.gstime(date);
+            earthMesh.rotation.y = gmst;
+
+            const jday = satellite.jday(date);
+            const sunPos = satellite.sunPos(jday);
+            const sunPositionScalar = 100; // Render the sun far enough away to look realistic
+            const sunPosition = new THREE.Vector3(
+                sunPos.rsun[0], // x
+                sunPos.rsun[2], // z
+                -sunPos.rsun[1] // -y
+            );
+            sunPosition.multiplyScalar(sunPositionScalar);
+            sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+
+            positionAndVelocity = satellite.propagate(satrec, date);
+
+            updateOrbitData(positionAndVelocity, gmst);
+
+            // Dividing by 1,000 since each unit represents 1,000 km
+            const x = positionAndVelocity.position.x / 1000;
+            const y = positionAndVelocity.position.y / 1000;
+            const z = positionAndVelocity.position.z / 1000;
+            satelliteMesh.position.set(x, z, -y); // x, z, -y to match Three JS' coordinate system
+
+            const orbitPointsPositionAttribute = orbitPoints.geometry.getAttribute('position');
+            const orbitPointsPositions = orbitPointsPositionAttribute.array;
+            orbitPointsPositions[orbitPointsIndex * 3] = x;
+            orbitPointsPositions[orbitPointsIndex * 3 + 1] = z;
+            orbitPointsPositions[orbitPointsIndex * 3 + 2] = -y;
+            orbitPointsPositionAttribute.needsUpdate = true;
+
+            orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
         }
-        simulationDateValue.textContent = date.toUTCString();
-
-        const gmst = satellite.gstime(date);
-        earthMesh.rotation.y = gmst;
-
-        const jday = satellite.jday(date);
-        const sunPos = satellite.sunPos(jday);
-        const sunPositionScalar = 100; // Render the sun far enough away to look realistic
-        const sunPosition = new THREE.Vector3(
-            sunPos.rsun[0], // x
-            sunPos.rsun[2], // z
-            -sunPos.rsun[1] // -y
-        );
-        sunPosition.multiplyScalar(sunPositionScalar);
-        sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
-
-        positionAndVelocity = satellite.propagate(satrec, date);
-
-        updateOrbitData(positionAndVelocity, gmst);
-
-        // Dividing by 1,000 since each unit represents 1,000 km
-        const x = positionAndVelocity.position.x / 1000;
-        const y = positionAndVelocity.position.y / 1000;
-        const z = positionAndVelocity.position.z / 1000;
-        satelliteMesh.position.set(x, z, -y); // x, z, -y to match Three JS' coordinate system
-
-        const orbitPointsPositionAttribute = orbitPoints.geometry.getAttribute('position');
-        const orbitPointsPositions = orbitPointsPositionAttribute.array;
-        orbitPointsPositions[orbitPointsIndex * 3] = x;
-        orbitPointsPositions[orbitPointsIndex * 3 + 1] = z;
-        orbitPointsPositions[orbitPointsIndex * 3 + 2] = -y;
-        orbitPointsPositionAttribute.needsUpdate = true;
-
-        orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
     }
 
     // Update count for animation tests
@@ -448,6 +516,23 @@ function initialize() {
     orbitPointsGeometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
     orbitPoints = new THREE.Points(orbitPointsGeometry, orbitPointsMaterial);
     eciGroup.add(orbitPoints);
+
+    semiMajorAxisMesh = createSemiMajorAxisMesh();
+    eciGroup.add(semiMajorAxisMesh);
+    updateSemiMajorAxisMesh();
+    semiMajorAxisInput.addEventListener('input', updateSemiMajorAxisMesh);
+
+    const collapsiblePanels = document.querySelectorAll('.panelHeader.collapsible');
+    collapsiblePanels.forEach(panelHeader => {
+        panelHeader.addEventListener('click', () => {
+            panelHeader.classList.toggle('closed');
+
+            const panelContent = panelHeader.nextElementSibling;
+            if (panelContent && panelContent.classList.contains('panelContent')) {
+                panelContent.classList.toggle('closed');
+            }
+        });
+    });
 
     renderer.setAnimationLoop(animate);
 }

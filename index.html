@@ -40,8 +40,36 @@
         color: var(--theme-color);
         font-size: 14px;
         font-weight: bold;
-        margin-bottom: 4px;
         padding-bottom: 4px;
+        user-select: none;
+      }
+
+      .panelHeader.collapsible {
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+      }
+      
+      .panelHeader.collapsible:hover {
+        color: #FFFFFF;
+      }
+
+      .arrow {
+        transition: transform 0.3s ease;
+      }
+
+      .panelHeader.closed .arrow {
+        transform: rotate(-90deg);
+      }
+
+      .panelContent {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .panelContent.closed {
+        display: none;
       }
 
       .group {
@@ -151,86 +179,94 @@
   <body>
     <div id="app"></div>
     <div id="leftColumn">
-        <div class="panel">
-          <div>
-            <div class="panelHeader">Orbit Specification</div>
-            <div class="group" style="gap: 2px;">
+        <div class="panel" style="gap: 0px;">
+          <div class="panelHeader collapsible">
+            Orbit Specification
+            <span class="arrow">▼</span>
+          </div>
+          <div class="panelContent">
+            <div class="group" style="gap: 2px; margin-bottom: 8px;">
               <span id="tleOrbitTab" class="tab selected">From TLE Data</span>
               <span id="customOrbitTab" class="tab">Custom Orbit</span>
             </div>
-          </div>
-          <div id="tleOrbitTabContent" class="group vertical">
-            <label for="noradIdInput">NORAD ID (SATCAT)</label>
-            <div class="group">
-                <input id="noradIdInput" type="text" placeholder="e.g. 25544">
-                <button id="fetchTleButton">Fetch TLE</button>
+            <div id="tleOrbitTabContent" class="group vertical">
+              <label for="noradIdInput">NORAD ID (SATCAT)</label>
+              <div class="group">
+                  <input id="noradIdInput" type="text" placeholder="e.g. 25544">
+                  <button id="fetchTleButton">Fetch TLE</button>
+              </div>
             </div>
-          </div>
-          <div id="customOrbitTabContent" class="group vertical hidden" style="gap: 12px;">
-            <div class="group vertical">
-              <label for="semiMajorAxisInput">Semi-major axis (a)</label>
-              <input id="semiMajorAxisInput" type="number" min="6500" placeholder="[6500, inf.) kilometers">
+            <div id="customOrbitTabContent" class="group vertical hidden" style="gap: 12px;">
+              <div class="group vertical">
+                <label for="semiMajorAxisInput">Semi-major axis (a)</label>
+                <input id="semiMajorAxisInput" type="number" min="6500" placeholder="[6500, inf.) kilometers">
+              </div>
+              <div class="group vertical">
+                <label for="eccentricityInput">Eccentricity (e)</label>
+                <input id="eccentricityInput" type="number" min="0" max="0.99" step="0.01" placeholder="0 ≤ e < 1">
+              </div>
+              <div class="group vertical">
+                <label for="inclinationInput">Inclination (i)</label>
+                <input id="inclinationInput" type="number" min="0" max="180" step="0.01" placeholder="[0°, 180°]">
+              </div>
+              <div class="group vertical">
+                <label for="raanInput">RAAN (Ω):</label>
+                <input id="raanInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+              </div>
+              <div class="group vertical">
+                <label for="argPerigeeInput">Argument of Perigee (ω)</label>
+                <input id="argPerigeeInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+              </div>
+              <div class="group vertical">
+                <label for="trueAnomalyInput">True Anomaly (v)</label>
+                <input id="trueAnomalyInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+              </div>
+              <button id="setOrbitButton">Set Orbit</button>
             </div>
-            <div class="group vertical">
-              <label for="eccentricityInput">Eccentricity (e)</label>
-              <input id="eccentricityInput" type="number" min="0" max="0.99" step="0.01" placeholder="0 ≤ e < 1">
-            </div>
-            <div class="group vertical">
-              <label for="inclinationInput">Inclination (i)</label>
-              <input id="inclinationInput" type="number" min="0" max="180" step="0.01" placeholder="[0°, 180°]">
-            </div>
-            <div class="group vertical">
-              <label for="raanInput">RAAN (Ω):</label>
-              <input id="raanInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
-            </div>
-            <div class="group vertical">
-              <label for="argPerigeeInput">Argument of Perigee (ω)</label>
-              <input id="argPerigeeInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
-            </div>
-            <div class="group vertical">
-              <label for="trueAnomalyInput">True Anomaly (v)</label>
-              <input id="trueAnomalyInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
-            </div>
-            <button id="setOrbitButton">Set Orbit</button>
           </div>
         </div>
 
         <div class="panel">
-            <div class="panelHeader">Simulation Controls</div>
-            <div class="group vertical">
-                <label>Time Step</label>
-                <div class="group">
-                    <input id="timeStepInput" type="number" value="30">
-                    <select id="timeStepUnit">
-                        <option value="milliseconds">milliseconds</option>
-                        <option value="seconds" selected>seconds</option>
-                        <option value="minutes">minutes</option>
-                        <option value="hours">hours</option>
-                    </select>
-                    <button id="setTimeStepButton">OK</button>
-                </div>
+            <div class="panelHeader collapsible">
+              Simulation Controls
+              <span class="arrow">▼</span>
             </div>
-            <div class="group vertical" style="padding-top: 12px;">
-                <label>Time Between Position Updates</label>
-                <div class="group">
-                    <input id="timeBetweenInput" type="number" value="250">
-                    <select id="timeBetweenUnit">
-                        <option value="milliseconds" selected>milliseconds</option>
-                        <option value="seconds">seconds</option>
-                    </select>
-                    <button id="setTimeBetweenButton">OK</button>
-                </div>
-            </div>
-            <div class="group vertical" style="padding-top: 12px;">
-                <label>Simulation Date</label>
-                <span class="dataValue" id="simulationDateValue">N/A</span>
-            </div>
-            <div class="group">
-                <button id="pauseResumeButton" style="flex: 1;">Pause</button>
-                <select id="timeDirection" style="flex: 1;">
-                    <option value="Forward">Forward</option>
-                    <option value="Reverse">Reverse</option>
-                </select>
+            <div class="panelContent">
+              <div class="group vertical">
+                  <label>Time Step</label>
+                  <div class="group">
+                      <input id="timeStepInput" type="number" value="30">
+                      <select id="timeStepUnit">
+                          <option value="milliseconds">milliseconds</option>
+                          <option value="seconds" selected>seconds</option>
+                          <option value="minutes">minutes</option>
+                          <option value="hours">hours</option>
+                      </select>
+                      <button id="setTimeStepButton">OK</button>
+                  </div>
+              </div>
+              <div class="group vertical" style="padding-top: 12px;">
+                  <label>Time Between Position Updates</label>
+                  <div class="group">
+                      <input id="timeBetweenInput" type="number" value="250">
+                      <select id="timeBetweenUnit">
+                          <option value="milliseconds" selected>milliseconds</option>
+                          <option value="seconds">seconds</option>
+                      </select>
+                      <button id="setTimeBetweenButton">OK</button>
+                  </div>
+              </div>
+              <div class="group vertical" style="padding-top: 12px;">
+                  <label>Simulation Date</label>
+                  <span class="dataValue" id="simulationDateValue">N/A</span>
+              </div>
+              <div class="group">
+                  <button id="pauseResumeButton" style="flex: 1;">Pause</button>
+                  <select id="timeDirection" style="flex: 1;">
+                      <option value="Forward">Forward</option>
+                      <option value="Reverse">Reverse</option>
+                  </select>
+              </div>
             </div>
         </div>
     </div>
