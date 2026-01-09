@@ -49,6 +49,7 @@ const meanAnomalyValue = document.getElementById('meanAnomalyValue');
 const meanMotionValue = document.getElementById('meanMotionValue');
 
 let earthMesh;
+let equatorialPlaneMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
@@ -517,6 +518,10 @@ function initialize() {
     orbitPoints = new THREE.Points(orbitPointsGeometry, orbitPointsMaterial);
     eciGroup.add(orbitPoints);
 
+    equatorialPlaneMesh = new THREE.GridHelper(30, 30, 0x888888);
+    equatorialPlaneMesh.visible = false;
+    eciGroup.add(equatorialPlaneMesh);
+
     semiMajorAxisMesh = createSemiMajorAxisMesh();
     eciGroup.add(semiMajorAxisMesh);
     updateSemiMajorAxisMesh();
@@ -530,6 +535,23 @@ function initialize() {
             const panelContent = panelHeader.nextElementSibling;
             if (panelContent && panelContent.classList.contains('panelContent')) {
                 panelContent.classList.toggle('closed');
+            }
+        });
+    });
+
+    const visibilityButtons = document.querySelectorAll('.visibilityButton');
+    visibilityButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const visible = button.classList.toggle('visible');
+            button.textContent = visible ? '⊙' : '✕';
+
+            switch (button.id) {
+                case 'earthVisibilityButton':
+                    earthMesh.visible = visible;
+                    break;
+                case 'equatorialPlaneVisibilityButton':
+                    equatorialPlaneMesh.visible = visible;
+                    break;
             }
         });
     });
