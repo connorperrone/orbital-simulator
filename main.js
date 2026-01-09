@@ -51,6 +51,7 @@ const meanMotionValue = document.getElementById('meanMotionValue');
 let earthMesh;
 let equatorialPlaneMesh;
 let eclipticMesh;
+let orbitShapeMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
@@ -64,9 +65,6 @@ let customInclination;
 let customRaan;
 let customArgPerigee;
 let customTrueAnomaly;
-
-// Shapes for the user to visualize the custom orbital elements as they change
-let semiMajorAxisMesh;
 
 const milliseconds = 0;
 const seconds = 1;
@@ -242,25 +240,31 @@ pauseResumeButton.addEventListener('click', () => {
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
 
-function createSemiMajorAxisMesh() {
+function createOrbitShapeMesh() {
     const numSegments = 128;
     const shapeGeometry = new THREE.BufferGeometry();
     const shapePositions = new Float32Array((numSegments + 1) * 3);
     shapeGeometry.setAttribute('position', new THREE.BufferAttribute(shapePositions, 3));
     const shapeMaterial = new THREE.LineBasicMaterial({color: 0x00FFFF});
-    semiMajorAxisMesh = new THREE.LineLoop(shapeGeometry, shapeMaterial);
-    return semiMajorAxisMesh;
+    orbitShapeMesh = new THREE.LineLoop(shapeGeometry, shapeMaterial);
+    return orbitShapeMesh;
 }
 
-function updateSemiMajorAxisMesh() {
+function updateOrbitShapeMesh() {
     let a = parseFloat(semiMajorAxisInput.value);
     if (isNaN(a) || a < 0) a = 7000;
-    const r = a / 1000;
-    const positionAttribute = semiMajorAxisMesh.geometry.getAttribute('position');
+
+    let e = parseFloat(eccentricityInput.value);
+    if (isNaN(e) || e < 0 || e >= 1) e = 0;
+
+    const positionAttribute = orbitShapeMesh.geometry.getAttribute('position');
     const positions = positionAttribute.array;
     const numSegments = 128;
     for (let i = 0; i <= numSegments; i++) {
         const theta = 2 * Math.PI * (i / numSegments);
+
+        let r = (a * (1 - (e * e))) / (1 + (e * Math.cos(theta)));
+        r /= 1000; // Convert from kilometers to units
 
         positions[i * 3] = r * Math.cos(theta);
         positions[(i * 3) + 1] = 0;
@@ -527,10 +531,12 @@ function initialize() {
     eclipticMesh.visible = false;
     scene.add(eclipticMesh);
 
-    semiMajorAxisMesh = createSemiMajorAxisMesh();
-    eciGroup.add(semiMajorAxisMesh);
-    updateSemiMajorAxisMesh();
-    semiMajorAxisInput.addEventListener('input', updateSemiMajorAxisMesh);
+    orbitShapeMesh = createOrbitShapeMesh();
+    orbitShapeMesh.visible = false;
+    eciGroup.add(orbitShapeMesh);
+    updateOrbitShapeMesh();
+    semiMajorAxisInput.addEventListener('input', updateOrbitShapeMesh);
+    eccentricityInput.addEventListener('input', updateOrbitShapeMesh);
 
     const collapsiblePanels = document.querySelectorAll('.panelHeader.collapsible');
     collapsiblePanels.forEach(panelHeader => {
@@ -559,6 +565,9 @@ function initialize() {
                     break;
                 case 'eclipticVisibilityButton':
                     eclipticMesh.visible = visible;
+                    break;
+                case 'orbitShapeVisibilityButton':
+                    orbitShapeMesh.visible = visible;
                     break;
             }
         });
