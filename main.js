@@ -50,6 +50,8 @@ const meanMotionValue = document.getElementById('meanMotionValue');
 
 let eciGroup; // Earth-Centered Inertial (ECI) coordinate system
 let pqwGroup; // Perifocal coordinate system (PQW)
+let eciAxes; // Arrows to visualize the ECI axes
+let pqwAxes; // Arrows to visualize the PQW axes
 let earthMesh;
 let equatorialPlaneMesh;
 let eclipticMesh;
@@ -533,19 +535,25 @@ function initialize() {
     argPerigeeInput.addEventListener('input', rotateOrbitShapeMesh);
     rotateOrbitShapeMesh();
 
+    eciAxes = new THREE.Group();
     const eciX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 10, 0xff0000, 0.5, 0.5);
-    eciGroup.add(eciX);
+    eciAxes.add(eciX);
     const eciY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 10, 0x00ff00, 0.5, 0.5);
-    eciGroup.add(eciY);
+    eciAxes.add(eciY);
     const eciZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 10, 0x0000ff, 0.5, 0.5);
-    eciGroup.add(eciZ);
+    eciAxes.add(eciZ);
+    eciAxes.visible = false;
+    eciGroup.add(eciAxes);
 
+    pqwAxes = new THREE.Group();
     const perifocalP = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 11, 0xffaaaa, 0.5, 0.5);
-    pqwGroup.add(perifocalP);
+    pqwAxes.add(perifocalP);
     const perifocalQ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 11, 0xaaaaff, 0.5, 0.5);
-    pqwGroup.add(perifocalQ);
+    pqwAxes.add(perifocalQ);
     const perifocalW = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 11, 0xaaffaa, 0.5, 0.5);
-    pqwGroup.add(perifocalW);
+    pqwAxes.add(perifocalW);
+    pqwAxes.visible = false;
+    pqwGroup.add(pqwAxes);
 
     const collapsiblePanels = document.querySelectorAll('.panelHeader.collapsible');
     collapsiblePanels.forEach(panelHeader => {
@@ -577,6 +585,12 @@ function initialize() {
                     break;
                 case 'orbitShapeVisibilityButton':
                     orbitShapeMesh.visible = visible;
+                    break;
+                case 'eciVisibilityButton':
+                    eciAxes.visible = visible;
+                    break;
+                case 'pqwVisibilityButton':
+                    pqwAxes.visible = visible;
                     break;
             }
         });
