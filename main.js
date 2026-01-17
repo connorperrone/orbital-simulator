@@ -48,6 +48,8 @@ const argPerigeeValue = document.getElementById('argPerigeeValue');
 const meanAnomalyValue = document.getElementById('meanAnomalyValue');
 const meanMotionValue = document.getElementById('meanMotionValue');
 
+let eciGroup; // Earth-Centered Inertial (ECI) coordinate system
+let pqwGroup; // Perifocal coordinate system (PQW)
 let earthMesh;
 let equatorialPlaneMesh;
 let eclipticMesh;
@@ -274,6 +276,29 @@ function updateOrbitShapeMesh() {
     positionAttribute.needsUpdate = true;
 }
 
+function rotateOrbitShapeMesh() {
+    let i = parseFloat(inclinationInput.value);
+    if (isNaN(i) || i < 0 || i > 180) i = 0;
+
+    let raan = parseFloat(raanInput.value);
+    if (isNaN(raan) || raan < 0 || raan > 359.99) raan = 0;
+
+    let argPerigee = parseFloat(argPerigeeInput.value);
+    if (isNaN(argPerigee) || argPerigee < 0 || argPerigee > 359.99) argPerigee = 0;
+
+    i = i * Math.PI / 180;
+    raan = raan * Math.PI / 180;
+    argPerigee = argPerigee * Math.PI / 180;
+
+    const rotationI = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), i);
+    const rotationRaan = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), raan);
+    const rotationArgPerigee = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), argPerigee);
+
+    const rotation = rotationRaan.multiply(rotationI).multiply(rotationArgPerigee);
+
+    pqwGroup.quaternion.copy(rotation);
+}
+
 function createStars() {
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
@@ -448,48 +473,14 @@ function initialize() {
     const ambientLight = new THREE.AmbientLight(0x404040, 2.0);
     scene.add(ambientLight);
 
-    // Create a group representing the ECI frame
-    const eciGroup = new THREE.Group();
+    // Create a group for the Earth-Centered Inertial (ECI) coordinate system
+    eciGroup = new THREE.Group();
     eciGroup.rotation.z = -23.4 * Math.PI / 180; // Earth's axial tilt
     scene.add(eciGroup);
 
-    // // Debug: Coordinates axes before rotation
-    // const xPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 0, 0)];
-    // const xLineGeoemtry = new THREE.BufferGeometry().setFromPoints(xPoints);
-    // const xLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
-    // const xLine = new THREE.Line(xLineGeoemtry, xLineMaterial);
-    // scene.add(xLine);
-
-    // const yPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0)];
-    // const yLineGeoemtry = new THREE.BufferGeometry().setFromPoints(yPoints);
-    // const yLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
-    // const yLine = new THREE.Line(yLineGeoemtry, yLineMaterial);
-    // scene.add(yLine);
-
-    // const zPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 10)];
-    // const zLineGeoemtry = new THREE.BufferGeometry().setFromPoints(zPoints);
-    // const zLineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF});
-    // const zLine = new THREE.Line(zLineGeoemtry, zLineMaterial);
-    // scene.add(zLine);
-
-    // // Debug: Coordinates axes after rotation (in ECI frame)
-    // const xPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 0, 0)];
-    // const xLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(xPointsNew);
-    // const xLineMaterialNew = new THREE.LineBasicMaterial({color: 0xFF0000});
-    // const xLineNew = new THREE.Line(xLineGeoemtryNew, xLineMaterialNew);
-    // eciGroup.add(xLineNew);
-
-    // const yPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 10, 0)];
-    // const yLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(yPointsNew);
-    // const yLineMaterialNew = new THREE.LineBasicMaterial({color: 0x00FF00});
-    // const yLineNew = new THREE.Line(yLineGeoemtryNew, yLineMaterialNew);
-    // eciGroup.add(yLineNew);
-
-    // const zPointsNew = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 10)];
-    // const zLineGeoemtryNew = new THREE.BufferGeometry().setFromPoints(zPointsNew);
-    // const zLineMaterialNew = new THREE.LineBasicMaterial({color: 0x0000FF});
-    // const zLineNew = new THREE.Line(zLineGeoemtryNew, zLineMaterialNew);
-    // eciGroup.add(zLineNew);
+    // Create a group for the Perifocal coordinate system (PQW)
+    pqwGroup = new THREE.Group();
+    eciGroup.add(pqwGroup);
 
     // Set an arbitrary initial position for the sun
     sun.position.set(100, 0, 0);
@@ -533,10 +524,28 @@ function initialize() {
 
     orbitShapeMesh = createOrbitShapeMesh();
     orbitShapeMesh.visible = false;
-    eciGroup.add(orbitShapeMesh);
+    pqwGroup.add(orbitShapeMesh);
     updateOrbitShapeMesh();
     semiMajorAxisInput.addEventListener('input', updateOrbitShapeMesh);
     eccentricityInput.addEventListener('input', updateOrbitShapeMesh);
+    inclinationInput.addEventListener('input', rotateOrbitShapeMesh);
+    raanInput.addEventListener('input', rotateOrbitShapeMesh);
+    argPerigeeInput.addEventListener('input', rotateOrbitShapeMesh);
+    rotateOrbitShapeMesh();
+
+    const eciX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 10, 0xff0000, 0.5, 0.5);
+    eciGroup.add(eciX);
+    const eciY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 10, 0x00ff00, 0.5, 0.5);
+    eciGroup.add(eciY);
+    const eciZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 10, 0x0000ff, 0.5, 0.5);
+    eciGroup.add(eciZ);
+
+    const perifocalP = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 11, 0xffaaaa, 0.5, 0.5);
+    pqwGroup.add(perifocalP);
+    const perifocalQ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 11, 0xaaaaff, 0.5, 0.5);
+    pqwGroup.add(perifocalQ);
+    const perifocalW = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 11, 0xaaffaa, 0.5, 0.5);
+    pqwGroup.add(perifocalW);
 
     const collapsiblePanels = document.querySelectorAll('.panelHeader.collapsible');
     collapsiblePanels.forEach(panelHeader => {
