@@ -45,12 +45,14 @@ const latitudeValue = document.getElementById('latitudeValue');
 const longitudeValue = document.getElementById('longitudeValue');
 const altitudeValue = document.getElementById('altitudeValue');
 const epochValue = document.getElementById('epochValue');
+const semiMajorAxisValue = document.getElementById('semiMajorAxisValue');
+const eccentricityValue = document.getElementById('eccentricityValue');
 const inclinationValue = document.getElementById('inclinationValue');
 const raanValue = document.getElementById('raanValue');
-const eccentricityValue = document.getElementById('eccentricityValue');
 const argPerigeeValue = document.getElementById('argPerigeeValue');
-const meanAnomalyValue = document.getElementById('meanAnomalyValue');
 const meanMotionValue = document.getElementById('meanMotionValue');
+const meanAnomalyValue = document.getElementById('meanAnomalyValue');
+const trueAnomalyValue = document.getElementById('trueAnomalyValue');
 
 let eciGroup; // Earth-Centered Inertial (ECI) coordinate system
 let pqwGroup; // Perifocal coordinate system (PQW)
@@ -89,6 +91,7 @@ let updateIntervalMs = 250; // The time between updates in milliseconds
 
 let satrec;
 let positionAndVelocity;
+let epoch;
 let date;
 let orbitPoints;
 let orbitPointsIndex;
@@ -150,19 +153,23 @@ fetchTleButton.addEventListener('click', async () => {
         satrec = satellite.twoline2satrec(tleLine1, tleLine2);
         
         // Update orbital elements
-        inclinationValue.textContent = satellite.radiansToDegrees(satrec.inclo).toFixed(3) + '°';
-        raanValue.textContent = satellite.radiansToDegrees(satrec.nodeo).toFixed(3) + '°';
-        eccentricityValue.textContent = satrec.ecco.toFixed(5);
-        argPerigeeValue.textContent = satellite.radiansToDegrees(satrec.argpo).toFixed(3) + '°';
-        meanAnomalyValue.textContent = satellite.radiansToDegrees(satrec.mo).toFixed(3) + '°';
-        meanMotionValue.textContent = satrec.no.toFixed(3) + ' rad/min';
-        const epoch = new Date(Date.UTC(satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr, 0, 0));
+        epoch = new Date(Date.UTC(satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr, 0, 0));
         epoch.setTime(epoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
         epochValue.textContent = epoch.toUTCString();
+        semiMajorAxisValue.textContent = (Math.cbrt(mu / ((satrec.no / 60) ** 2)) / 1000).toFixed(3) + ' km';
+        eccentricityValue.textContent = satrec.ecco.toFixed(5);
+        inclinationValue.textContent = satellite.radiansToDegrees(satrec.inclo).toFixed(3) + '°';
+        raanValue.textContent = satellite.radiansToDegrees(satrec.nodeo).toFixed(3) + '°';
+        argPerigeeValue.textContent = satellite.radiansToDegrees(satrec.argpo).toFixed(3) + '°';
+        meanMotionValue.textContent = satrec.no.toFixed(3) + ' rad/min';
+        meanAnomalyValue.textContent = satellite.radiansToDegrees(satrec.mo).toFixed(3) + '°';
 
         // date = new Date(); // Current date for debugging
-        date = epoch;
+        date = new Date(epoch);
         positionAndVelocity = satellite.propagate(satrec, date);
+
+        trueAnomalyValue.textContent = (calculateTleTrueAnomaly(positionAndVelocity) * 180 / Math.PI).toFixed(3) + '°';
+
         eciGroup.add(satelliteMesh);
         // Dividing by 1,000 since each unit represents 1,000 km
         satelliteMesh.position.set(
@@ -181,20 +188,52 @@ fetchTleButton.addEventListener('click', async () => {
         simulationDateValue.textContent = date.toUTCString();
         customOrbit = false;
         paused = false;
+        pauseResumeButton.textContent = 'Pause';
     } catch (error) {
         alert(error.message);
         console.error(`Caught error while fetching TLE: ${error}`);
     }
 });
 
+function calculateTleTrueAnomaly(positionAndVelocity) {
+    const r = new THREE.Vector3(positionAndVelocity.position.x, positionAndVelocity.position.y, positionAndVelocity.position.z);
+    const v = new THREE.Vector3(positionAndVelocity.velocity.x, positionAndVelocity.velocity.y, positionAndVelocity.velocity.z);
+    const e = r.clone().multiplyScalar(((v.length() ** 2) / (mu / 1e9)) - (1 / r.length())).addScaledVector(v, -r.dot(v) / (mu / 1e9));
+    let trueAnomaly = Math.acos(e.dot(r) / (e.length() * r.length()));
+    if (r.dot(v) < 0) trueAnomaly = (2 * Math.PI) - trueAnomaly;
+    return trueAnomaly;
+}
+
 setOrbitButton.addEventListener('click', () => {
     customSemiMajorAxis = semiMajorAxisInput.valueAsNumber || 7000;
+    semiMajorAxisValue.textContent = customSemiMajorAxis + ' km';
+
     customEccentricity = eccentricityInput.valueAsNumber || 0;
-    customInclination = (inclinationInput.valueAsNumber || 0) * Math.PI / 180;
-    customRaan = (raanInput.valueAsNumber || 0) * Math.PI / 180;
-    customArgPerigee = (argPerigeeInput.valueAsNumber || 0) * Math.PI / 180;
-    customTrueAnomaly = (trueAnomalyInput.valueAsNumber || 0) * Math.PI / 180;
+    eccentricityValue.textContent = customEccentricity.toFixed(5);
+
+    customInclination = inclinationInput.valueAsNumber || 0;
+    inclinationValue.textContent = customInclination.toFixed(3) + '°';
+    customInclination = customInclination * Math.PI / 180;
+
+    customRaan = raanInput.valueAsNumber || 0;
+    raanValue.textContent = customRaan.toFixed(3) + '°';
+    customRaan = customRaan * Math.PI / 180;
+
+    customArgPerigee = argPerigeeInput.valueAsNumber || 0;
+    argPerigeeValue.textContent = customArgPerigee.toFixed(3) + '°';
+    customArgPerigee = customArgPerigee * Math.PI / 180;
+
+    customTrueAnomaly = trueAnomalyInput.valueAsNumber || 0;
+    trueAnomalyValue.textContent = customTrueAnomaly.toFixed(3) + '°';
+    customTrueAnomaly = customTrueAnomaly * Math.PI / 180;
+
     customEpoch = epochInput.value ? new Date(epochInput.value + 'Z') : new Date();
+    epochValue.textContent = customEpoch.toUTCString();
+    date = new Date(customEpoch);
+
+    // Calculate mean motion now for subsequent calculations of mean anomaly
+    customMeanMotion = Math.sqrt(mu / ((customSemiMajorAxis * 1000) ** 3));
+    meanMotionValue.textContent = customMeanMotion.toFixed(3) + ' rad/sec';
 
     // Calculate mean anomaly at epoch using eccentricity and true anomaly
     const E = Math.atan2(
@@ -202,18 +241,16 @@ setOrbitButton.addEventListener('click', () => {
         customEccentricity + Math.cos(customTrueAnomaly)
     );
     customMeanAnomalyAtEpoch = E - (customEccentricity * Math.sin(E));
-
-    // Calculate mean motion now for subsequent calculations of mean anomaly
-    customMeanMotion = Math.sqrt(mu / ((customSemiMajorAxis * 1000) ** 3));
+    if (customMeanAnomalyAtEpoch < 0) customMeanAnomalyAtEpoch += (2 * Math.PI);
+    meanAnomalyValue.textContent = (customMeanAnomalyAtEpoch * 180 / Math.PI).toFixed(3) + '°';
 
     pqwGroup.add(satelliteMesh);
-
-    date = new Date(customEpoch);
 
     // Update Simulation Controls panel
     simulationDateValue.textContent = date.toUTCString();
     customOrbit = true;
     paused = false;
+    pauseResumeButton.textContent = 'Pause';
 });
 
 setTimeStepButton.addEventListener('click', () => {
@@ -385,8 +422,8 @@ function createStars() {
     return new THREE.Points(starGeometry, starMaterial);
 }
 
-function updateOrbitData(positionAndVelocity, gmst) {
-    const geodetic = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
+function updateOrbitData(position, gmst) {
+    const geodetic = satellite.eciToGeodetic(position, gmst);
     const latitude = satellite.degreesLat(geodetic.latitude);
     const longitude = satellite.degreesLong(geodetic.longitude);
     const altitude = geodetic.height;
@@ -426,6 +463,22 @@ function animate(time) {
 
     // Propagate orbit if not paused and the update interval has passed
     if (!paused && time - lastUpdate >= updateIntervalMs) {
+
+        // Update Earth's rotation and Sun's position
+        const gmst = satellite.gstime(date);
+        earthMesh.rotation.y = gmst;
+
+        const jday = satellite.jday(date);
+        const sunPos = satellite.sunPos(jday);
+        const sunPositionScalar = 100; // Render the sun far enough away to look realistic
+        const sunPosition = new THREE.Vector3(
+            sunPos.rsun[0], // x
+            sunPos.rsun[2], // z
+            -sunPos.rsun[1] // -y
+        );
+        sunPosition.multiplyScalar(sunPositionScalar);
+        sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+
         if (customOrbit) {
             // Propagate with the custom orbital elements defined by the user
 
@@ -461,12 +514,21 @@ function animate(time) {
             let x = customSemiMajorAxis * (Math.cos(E) - e);
             let y = customSemiMajorAxis * Math.sqrt(1 - (e ** 2)) * Math.sin(E);
             satelliteMesh.position.set(x / 1000, 0, -y / 1000);
+
+            // Update geodetic coordinates panel
+            const position = new THREE.Vector3(x / 1000, 0, -y / 1000);
+            position.applyQuaternion(pqwGroup.quaternion);
+            updateOrbitData({x: position.x * 1000, y: -position.z * 1000, z: position.y * 1000}, gmst);
+
+            // Update orbital elements panel
+            meanAnomalyValue.textContent = (M * 180 / Math.PI).toFixed(3) + '°';
+            let trueAnomaly = 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
+            if (trueAnomaly < 0) trueAnomaly += (2 * Math.PI);
+            trueAnomalyValue.textContent = (trueAnomaly * 180 / Math.PI).toFixed(3) + '°';
         } else if (satrec) {
             // Propagate with TLE data if it exists
 
             positionAndVelocity = satellite.propagate(satrec, date);
-
-            updateOrbitData(positionAndVelocity, gmst);
 
             // Dividing by 1,000 since each unit represents 1,000 km
             const x = positionAndVelocity.position.x / 1000;
@@ -482,22 +544,15 @@ function animate(time) {
             orbitPointsPositionAttribute.needsUpdate = true;
 
             orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
+
+            // Update geodetic coordinates and orbital elements panels
+            updateOrbitData(positionAndVelocity.position, gmst);
+            const deltaT = (date - epoch) / 60000;
+            let M = (satrec.mo + (satrec.no * deltaT)) % (2 * Math.PI);
+            if (M < 0) M += (2 * Math.PI);
+            meanAnomalyValue.textContent = (M * 180 / Math.PI).toFixed(3) + '°';
+            trueAnomalyValue.textContent = (calculateTleTrueAnomaly(positionAndVelocity) * 180 / Math.PI).toFixed(3) + '°';
         }
-
-        // Update Earth's rotation and Sun's position
-        const gmst = satellite.gstime(date);
-        earthMesh.rotation.y = gmst;
-
-        const jday = satellite.jday(date);
-        const sunPos = satellite.sunPos(jday);
-        const sunPositionScalar = 100; // Render the sun far enough away to look realistic
-        const sunPosition = new THREE.Vector3(
-            sunPos.rsun[0], // x
-            sunPos.rsun[2], // z
-            -sunPos.rsun[1] // -y
-        );
-        sunPosition.multiplyScalar(sunPositionScalar);
-        sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
 
         // Update simulated time and lastUpdate variable
         lastUpdate = time;
