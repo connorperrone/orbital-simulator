@@ -40,6 +40,7 @@ const timeBetweenUnitSelect = document.getElementById('timeBetweenUnit');
 const setTimeBetweenButton = document.getElementById('setTimeBetweenButton');
 const simulationDateValue = document.getElementById('simulationDateValue');
 const pauseResumeButton = document.getElementById('pauseResumeButton');
+const timeDirectionSelect = document.getElementById('timeDirection');
 
 const latitudeValue = document.getElementById('latitudeValue');
 const longitudeValue = document.getElementById('longitudeValue');
@@ -96,6 +97,7 @@ let date;
 let orbitPoints;
 let orbitPointsIndex;
 let paused = true;
+let propagateForward = true;
 let lastUpdate = 0;
 
 tleOrbitTab.addEventListener('click', () => {
@@ -308,6 +310,10 @@ pauseResumeButton.addEventListener('click', () => {
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
 
+timeDirectionSelect.addEventListener('change', () => {
+    propagateForward = timeDirectionSelect.value === 'Forward';
+});
+
 function createOrbitShapeMesh() {
     const numSegments = 128;
     const shapeGeometry = new THREE.BufferGeometry();
@@ -461,6 +467,8 @@ function animate(time) {
         starColorsAttribute.needsUpdate = true;
     }
 
+    let signedTimeStep = propagateForward ? timeStep : (timeStep * -1);
+
     // Propagate orbit if not paused and the update interval has passed
     if (!paused && time - lastUpdate >= updateIntervalMs) {
 
@@ -558,21 +566,21 @@ function animate(time) {
         lastUpdate = time;
         switch (timeStepUnit) {
             case milliseconds:
-                date.setMilliseconds(date.getMilliseconds() + timeStep);
+                date.setMilliseconds(date.getMilliseconds() + signedTimeStep);
                 break;
             case seconds:
-                date.setSeconds(date.getSeconds() + timeStep);
+                date.setSeconds(date.getSeconds() + signedTimeStep);
                 break;
             case minutes:
-                date.setMinutes(date.getMinutes() + timeStep);
+                date.setMinutes(date.getMinutes() + signedTimeStep);
                 break;
             case hours:
-                date.setHours(date.getHours() + timeStep);
+                date.setHours(date.getHours() + signedTimeStep);
                 break;
             default:
                 console.log('Invalid time step unit. Setting to seconds...');
                 timeStepUnit = seconds;
-                date.setSeconds(date.getSeconds() + timeStep);
+                date.setSeconds(date.getSeconds() + signedTimeStep);
                 break;
         }
         simulationDateValue.textContent = date.toUTCString();
