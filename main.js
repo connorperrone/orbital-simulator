@@ -63,6 +63,10 @@ let earthMesh;
 let equatorialPlaneMesh;
 let eclipticMesh;
 let orbitShapeMesh;
+let orbitalPlaneMesh;
+let inclinationArcMesh;
+let raanArcMesh;
+let argPerigeeArcMesh;
 let stars;
 let satelliteMesh;
 let count = 0;
@@ -363,6 +367,10 @@ function updateInclination() {
     if (isNaN(i) || i < 0 || i > 180) i = 0;
     customInclination = i * Math.PI / 180;
     rotatePqwGroup();
+
+    inclinationArcMesh.geometry.dispose();
+    inclinationArcMesh.geometry = new THREE.RingGeometry(7.0, 7.25, 32, 1, 0, customInclination);
+    inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
 }
 
 function updateRaan() {
@@ -370,6 +378,11 @@ function updateRaan() {
     if (isNaN(raan) || raan < 0 || raan > 359.99) raan = 0;
     customRaan = raan * Math.PI / 180;
     rotatePqwGroup();
+
+    raanArcMesh.geometry.dispose();
+    raanArcMesh.geometry = new THREE.RingGeometry(7.25, 7.5, 32, 1, 0, customRaan);
+
+    inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
 }
 
 function updateArgPerigee() {
@@ -377,6 +390,9 @@ function updateArgPerigee() {
     if (isNaN(argPerigee) || argPerigee < 0 || argPerigee > 359.99) argPerigee = 0;
     customArgPerigee = argPerigee * Math.PI / 180;
     rotatePqwGroup();
+
+    argPerigeeArcMesh.geometry.dispose();
+    argPerigeeArcMesh.geometry = new THREE.RingGeometry(7.5, 7.75, 32, 1, 0, customArgPerigee);
 }
 
 function createStars() {
@@ -596,7 +612,7 @@ function initialize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    camera.position.z = 15;
+    camera.position.set(15, 0, -15);
     controls.enableDamping = true;
     controls.minDistance = 7;
     controls.maxDistance = 50;
@@ -659,6 +675,10 @@ function initialize() {
     orbitShapeMesh.visible = false;
     pqwGroup.add(orbitShapeMesh);
     updateOrbitShapeMesh();
+    orbitalPlaneMesh = new THREE.GridHelper(30, 30, 0x00FFFF, 0x00FFFF);
+    orbitalPlaneMesh.material.transparent = true;
+    orbitalPlaneMesh.material.opacity = 0.3;
+    pqwGroup.add(orbitalPlaneMesh);
     semiMajorAxisInput.addEventListener('input', updateOrbitShapeMesh);
     eccentricityInput.addEventListener('input', updateOrbitShapeMesh);
     inclinationInput.addEventListener('input', updateInclination);
@@ -666,12 +686,44 @@ function initialize() {
     argPerigeeInput.addEventListener('input', updateArgPerigee);
     rotatePqwGroup();
 
+    const inclinationArcGeometry = new THREE.RingGeometry(7.5, 8.0, 32, 1, 0, 0);
+    const inclinationArcMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFF00FF,
+        opacity: 0.75,
+        side: THREE.DoubleSide,
+        transparent: true,
+    });
+    inclinationArcMesh = new THREE.Mesh(inclinationArcGeometry, inclinationArcMaterial);
+    eciGroup.add(inclinationArcMesh);
+    
+    const raanArcGeometry = new THREE.RingGeometry(7.0, 7.5, 32, 1, 0, 0);
+    const raanArcMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFFF00,
+        opacity: 0.75,
+        side: THREE.DoubleSide,
+        transparent: true,
+    });
+    raanArcMesh = new THREE.Mesh(raanArcGeometry, raanArcMaterial);
+    raanArcMesh.rotation.x = -1 * Math.PI / 2;
+    eciGroup.add(raanArcMesh);
+
+    const argPerigeeArcGeometry = new THREE.RingGeometry(8.5, 9.0, 32, 1, 0, 0);
+    const argPerigeeArcMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00FFFF,
+        opacity: 0.75,
+        side: THREE.DoubleSide,
+        transparent: true,
+    });
+    argPerigeeArcMesh = new THREE.Mesh(argPerigeeArcGeometry, argPerigeeArcMaterial);
+    argPerigeeArcMesh.rotation.x = Math.PI / 2;
+    pqwGroup.add(argPerigeeArcMesh);
+
     eciAxes = new THREE.Group();
     const eciX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 10, 0xff0000, 0.5, 0.5);
     eciAxes.add(eciX);
-    const eciY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 10, 0x00ff00, 0.5, 0.5);
+    const eciY = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, 0), 10, 0x00ff00, 0.5, 0.5);
     eciAxes.add(eciY);
-    const eciZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 10, 0x0000ff, 0.5, 0.5);
+    const eciZ = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 10, 0x0000ff, 0.5, 0.5);
     eciAxes.add(eciZ);
     eciAxes.visible = false;
     eciGroup.add(eciAxes);
@@ -679,9 +731,9 @@ function initialize() {
     pqwAxes = new THREE.Group();
     const perifocalP = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 11, 0xffaaaa, 0.5, 0.5);
     pqwAxes.add(perifocalP);
-    const perifocalQ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), 11, 0xaaaaff, 0.5, 0.5);
+    const perifocalQ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, 0, 0), 11, 0xaaffaa, 0.5, 0.5);
     pqwAxes.add(perifocalQ);
-    const perifocalW = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 11, 0xaaffaa, 0.5, 0.5);
+    const perifocalW = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 11, 0xaaaaff, 0.5, 0.5);
     pqwAxes.add(perifocalW);
     pqwAxes.visible = false;
     pqwGroup.add(pqwAxes);
