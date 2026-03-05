@@ -188,6 +188,16 @@
         display: none;
       }
 
+      .halfColumnWidth {
+        flex: 1 1 0%;
+        min-width: 0;
+      }
+
+      .halfColumnWidth input {
+        box-sizing: border-box;
+        width: 100%;
+      }
+
       .visibilityRow {
         align-items: center;
         justify-content: space-between;
@@ -201,9 +211,10 @@
         background-color: transparent;
         color: rgba(255, 255, 255, 0.5);
         display: flex;
-        font-size: 18px;
+        font-size: 13px;
         height: 28px;
-        width: 56px;
+        min-width: 28px;
+        padding: 0px 8px;
         justify-content: center;
         transition: all 0.3s ease;
       }
@@ -240,29 +251,35 @@
               </div>
             </div>
             <div id="customOrbitTabContent" class="group vertical hidden" style="gap: 12px;">
-              <div class="group vertical">
-                <label for="semiMajorAxisInput">Semi-major axis (a)</label>
-                <input id="semiMajorAxisInput" type="number" min="6500" placeholder="[6500, inf.) kilometers">
+              <div class="group">
+                <div class="group vertical halfColumnWidth">
+                  <label for="semiMajorAxisInput">Semi-major axis (a)</label>
+                  <input id="semiMajorAxisInput" type="number" min="6500" step="10" placeholder="[6500, inf.) km">
+                </div>
+                <div class="group vertical halfColumnWidth">
+                  <label for="eccentricityInput">Eccentricity (e)</label>
+                  <input id="eccentricityInput" type="number" min="0" max="0.99" step="0.01" placeholder="0 ≤ e < 1">
+                </div>
               </div>
-              <div class="group vertical">
-                <label for="eccentricityInput">Eccentricity (e)</label>
-                <input id="eccentricityInput" type="number" min="0" max="0.99" step="0.01" placeholder="0 ≤ e < 1">
+              <div class="group">
+                <div class="group vertical halfColumnWidth">
+                  <label for="inclinationInput">Inclination (i)</label>
+                  <input id="inclinationInput" type="number" min="0" max="180" step="1.8" placeholder="[0°, 180°]">
+                </div>
+                <div class="group vertical halfColumnWidth">
+                  <label for="raanInput">RAAN (Ω):</label>
+                  <input id="raanInput" type="number" min="0" max="359.99" step="3.6" placeholder="[0°, 360°)">
+                </div>
               </div>
-              <div class="group vertical">
-                <label for="inclinationInput">Inclination (i)</label>
-                <input id="inclinationInput" type="number" min="0" max="180" step="0.01" placeholder="[0°, 180°]">
-              </div>
-              <div class="group vertical">
-                <label for="raanInput">RAAN (Ω):</label>
-                <input id="raanInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
-              </div>
-              <div class="group vertical">
-                <label for="argPerigeeInput">Argument of Perigee (ω)</label>
-                <input id="argPerigeeInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
-              </div>
-              <div class="group vertical">
-                <label for="trueAnomalyInput">True Anomaly (v)</label>
-                <input id="trueAnomalyInput" type="number" min="0" max="359.99" step="0.01" placeholder="[0°, 360°)">
+              <div class="group">
+                <div class="group vertical halfColumnWidth">
+                  <label for="argPerigeeInput">Arg. of Perigee (ω)</label>
+                  <input id="argPerigeeInput" type="number" min="0" max="359.99" step="3.6" placeholder="[0°, 360°)">
+                </div>
+                <div class="group vertical halfColumnWidth">
+                  <label for="trueAnomalyInput">True Anomaly (v)</label>
+                  <input id="trueAnomalyInput" type="number" min="0" max="359.99" step="3.6" placeholder="[0°, 360°)">
+                </div>
               </div>
               <div class="group vertical">
                 <label for="epochInput">Epoch (UTC)</label>
@@ -280,28 +297,37 @@
           </div>
           <div class="panelContent">
             <div class="dataRow visibilityRow">
-              <span class="dataLabel">Earth</span>
-              <button id="earthVisibilityButton" class="visibilityButton visible" title="Click to toggle visibility">⊙</button>
+              <span class="dataLabel">Core Visuals</span>
+              <div class="group">
+                <button id="earthVisibilityButton" class="visibilityButton visible" title="Toggle Earth">Earth</button>
+                <button id="orbitShapeVisibilityButton" class="visibilityButton" title="Toggle Orbit Shape">Orbit</button>
+              </div>
             </div>
-            <div class="dataRow visibilityRow" style="align-items: center; justify-content: space-between;">
-              <span class="dataLabel">Equatorial Plane</span>
-              <button id="equatorialPlaneVisibilityButton" class="visibilityButton" title="Click to toggle visibility">✕</button>
+
+            <div class="dataRow visibilityRow">
+              <span class="dataLabel">Planes</span>
+              <div class="group">
+                <button id="equatorialPlaneVisibilityButton" class="visibilityButton" title="Toggle Equatorial Plane">Equat.</button>
+                <button id="eclipticVisibilityButton" class="visibilityButton" title="Toggle Ecliptic Plane">Eclip.</button>
+                <button id="orbitalPlaneVisibilityButton" class="visibilityButton" title="Toggle Orbital Plane">Orbital</button>
+              </div>
             </div>
-            <div class="dataRow visibilityRow" style="align-items: center; justify-content: space-between;">
-              <span class="dataLabel">Ecliptic</span>
-              <button id="eclipticVisibilityButton" class="visibilityButton" title="Click to toggle visibility">✕</button>
+
+            <div class="dataRow visibilityRow">
+              <span class="dataLabel">Coordinate Axes</span>
+              <div class="group">
+                <button id="eciVisibilityButton" class="visibilityButton" title="Toggle Earth-Centered Inertial Axes">ECI</button>
+                <button id="pqwVisibilityButton" class="visibilityButton" title="Toggle Perifocal Axes">PQW</button>
+              </div>
             </div>
-            <div class="dataRow visibilityRow" style="align-items: center; justify-content: space-between;">
-              <span class="dataLabel">Orbit Shape</span>
-              <button id="orbitShapeVisibilityButton" class="visibilityButton" title="Click to toggle visibility">✕</button>
-            </div>
-            <div class="dataRow visibilityRow" style="align-items: center; justify-content: space-between;">
-              <span class="dataLabel">ECI Axes</span>
-              <button id="eciVisibilityButton" class="visibilityButton" title="Click to toggle visibility">✕</button>
-            </div>
-            <div class="dataRow visibilityRow" style="align-items: center; justify-content: space-between;">
-              <span class="dataLabel">Perifocal (PQW) Axes</span>
-              <button id="pqwVisibilityButton" class="visibilityButton" title="Click to toggle visibility">✕</button>
+
+            <div class="dataRow visibilityRow">
+              <span class="dataLabel">Orbital Angles</span>
+              <div class="group">
+                <button id="inclinationVisibilityButton" class="visibilityButton" title="Toggle Inclination">i</button>
+                <button id="raanVisibilityButton" class="visibilityButton" title="Toggle RAAN">Ω</button>
+                <button id="argPerigeeVisibilityButton" class="visibilityButton" title="Toggle Argument of Perigee">ω</button>
+              </div>
             </div>
           </div>
         </div>
