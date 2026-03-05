@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import * as satellite from 'satellite.js';
 
 const scene = new THREE.Scene();
@@ -12,7 +13,6 @@ const textureLoader = new THREE.TextureLoader();
 // Standard gravitational parameter of Earth
 const mu = 3.986004418e14;
 
-const starCount = 10000;
 const maxOrbitPoints = 400;
 
 const tleOrbitTab = document.getElementById('tleOrbitTab');
@@ -67,9 +67,8 @@ let orbitalPlaneMesh;
 let inclinationArcMesh;
 let raanArcMesh;
 let argPerigeeArcMesh;
-let stars;
+let skySphere;
 let satelliteMesh;
-let count = 0;
 
 // True if user has defined custom orbit, false if propagating with TLE data
 let customOrbit = false;
@@ -369,7 +368,7 @@ function updateInclination() {
     rotatePqwGroup();
 
     inclinationArcMesh.geometry.dispose();
-    inclinationArcMesh.geometry = new THREE.RingGeometry(7.0, 7.25, 32, 1, 0, customInclination);
+    inclinationArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customInclination);
     inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
 }
 
@@ -380,7 +379,7 @@ function updateRaan() {
     rotatePqwGroup();
 
     raanArcMesh.geometry.dispose();
-    raanArcMesh.geometry = new THREE.RingGeometry(7.25, 7.5, 32, 1, 0, customRaan);
+    raanArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customRaan);
 
     inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
 }
@@ -392,56 +391,7 @@ function updateArgPerigee() {
     rotatePqwGroup();
 
     argPerigeeArcMesh.geometry.dispose();
-    argPerigeeArcMesh.geometry = new THREE.RingGeometry(7.5, 7.75, 32, 1, 0, customArgPerigee);
-}
-
-function createStars() {
-    const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    const starColors = new Float32Array(starCount * 4);
-    const starColorTargets = new Float32Array(starCount);
-    for (let i = 0; i < starCount; i++) {
-        const r = THREE.MathUtils.randFloat(200, 500);
-        const theta = 2 * Math.PI * Math.random();
-        const phi = Math.PI * Math.random();
-        starPositions[(i * 3)] = r * Math.sin(theta) * Math.cos(phi);     // x
-        starPositions[(i * 3) + 1] = r * Math.cos(theta);                 // y
-        starPositions[(i * 3) + 2] = r * Math.sin(theta) * Math.sin(phi); // z
-
-        starColors[(i * 4)] = 1.0;
-        starColors[(i * 4) + 1] = 1.0;
-        starColors[(i * 4) + 2] = 1.0;
-        starColors[(i * 4) + 3] = Math.random();
-
-        starColorTargets[i] = Math.random();
-    }
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 4));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const context = canvas.getContext('2d');
-    const gradient = context.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, 0,
-        canvas.width / 2, canvas.height / 2, canvas.width / 2
-    );
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    const starTexture = new THREE.CanvasTexture(canvas);
-
-    const starMaterial = new THREE.PointsMaterial({
-        size: 2.5,
-        vertexColors: true,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        map: starTexture
-    });
-
-    return new THREE.Points(starGeometry, starMaterial);
+    argPerigeeArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customArgPerigee);
 }
 
 function updateOrbitData(position, gmst) {
@@ -458,30 +408,6 @@ function updateOrbitData(position, gmst) {
 function animate(time) {
     // Update controls because enableDamping is true
     controls.update();
-
-    // Initial testing for animating stars
-    if (count % 20 == 0) {
-        const starColorsAttribute = stars.geometry.getAttribute('color');
-        const starColorsArray = starColorsAttribute.array;
-        const numStarsToAnimate = Math.floor(starCount * 0.4);
-        for (let i = 0; i < numStarsToAnimate; i++) {
-            const starIndex = Math.floor(starCount * Math.random()) * 4;
-            var alpha = starColorsArray[starIndex + 3];
-            var deltaAlpha = (Math.random() * 0.2);
-            if (Math.random() >= 0.5) {
-                alpha += deltaAlpha;
-            } else {
-                alpha -= deltaAlpha;
-            }
-            if (alpha < 0.0) {
-                alpha = 0.0;
-            } else if (alpha > 1.0) {
-                alpha = 1.0;
-            }
-            starColorsArray[starIndex + 3] = alpha;
-        }
-        starColorsAttribute.needsUpdate = true;
-    }
 
     let signedTimeStep = propagateForward ? timeStep : (timeStep * -1);
 
@@ -602,9 +528,6 @@ function animate(time) {
         simulationDateValue.textContent = date.toUTCString();
     }
 
-    // Update count for animation tests
-    count++;
-
     renderer.render(scene, camera);
 }
 
@@ -644,9 +567,35 @@ function initialize() {
     });
     earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     eciGroup.add(earthMesh);
+    
+    const exrLoader = new EXRLoader();
+    exrLoader.load('./assets/textures/starmap_2020_4k.exr', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        const starMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.BackSide,
+        });
 
-    stars = createStars();
-    scene.add(stars);
+        const constellationTexture = textureLoader.load('./assets/textures/constellation_figures_8k.jpg');
+        constellationTexture.mapping = THREE.EquirectangularReflectionMapping;
+        const constellationMaterial = new THREE.MeshBasicMaterial({
+            blending: THREE.AdditiveBlending,
+            map: constellationTexture,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.5,
+        });
+
+        const celestialSphereGeometry = new THREE.SphereGeometry(500, 64, 64);
+        const starSphere = new THREE.Mesh(celestialSphereGeometry, starMaterial);
+        const constellationSphere = new THREE.Mesh(celestialSphereGeometry, constellationMaterial);
+
+        const celestialSphereGroup = new THREE.Group();
+        celestialSphereGroup.add(starSphere);
+        celestialSphereGroup.add(constellationSphere);
+        celestialSphereGroup.rotation.z = -23.4 * Math.PI / 180; // Earth's axial tilt
+        scene.add(celestialSphereGroup);
+    });
 
     const satelliteGeoemtry = new THREE.SphereGeometry(0.15, 8, 8);
     const satelliteMaterial = new THREE.MeshBasicMaterial({color: 0xFFFFFF});
@@ -664,10 +613,14 @@ function initialize() {
     eciGroup.add(orbitPoints);
 
     equatorialPlaneMesh = new THREE.GridHelper(30, 30, 0x888888);
+    equatorialPlaneMesh.material.transparent = true;
+    equatorialPlaneMesh.material.opacity = 0.8;
     equatorialPlaneMesh.visible = false;
     eciGroup.add(equatorialPlaneMesh);
     
     eclipticMesh = new THREE.GridHelper(30, 30, 0x0000FF, 0x0000FF);
+    eclipticMesh.material.transparent = true;
+    eclipticMesh.material.opacity = 0.4;
     eclipticMesh.visible = false;
     scene.add(eclipticMesh);
 
@@ -677,7 +630,8 @@ function initialize() {
     updateOrbitShapeMesh();
     orbitalPlaneMesh = new THREE.GridHelper(30, 30, 0x00FFFF, 0x00FFFF);
     orbitalPlaneMesh.material.transparent = true;
-    orbitalPlaneMesh.material.opacity = 0.3;
+    orbitalPlaneMesh.material.opacity = 0.4;
+    orbitalPlaneMesh.visible = false;
     pqwGroup.add(orbitalPlaneMesh);
     semiMajorAxisInput.addEventListener('input', updateOrbitShapeMesh);
     eccentricityInput.addEventListener('input', updateOrbitShapeMesh);
@@ -686,17 +640,18 @@ function initialize() {
     argPerigeeInput.addEventListener('input', updateArgPerigee);
     rotatePqwGroup();
 
-    const inclinationArcGeometry = new THREE.RingGeometry(7.5, 8.0, 32, 1, 0, 0);
+    const inclinationArcGeometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, 0);
     const inclinationArcMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF00FF,
+        color: 0x00FFFF,
         opacity: 0.75,
         side: THREE.DoubleSide,
         transparent: true,
     });
     inclinationArcMesh = new THREE.Mesh(inclinationArcGeometry, inclinationArcMaterial);
+    inclinationArcMesh.visible = false;
     eciGroup.add(inclinationArcMesh);
     
-    const raanArcGeometry = new THREE.RingGeometry(7.0, 7.5, 32, 1, 0, 0);
+    const raanArcGeometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, 0);
     const raanArcMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFFF00,
         opacity: 0.75,
@@ -704,18 +659,23 @@ function initialize() {
         transparent: true,
     });
     raanArcMesh = new THREE.Mesh(raanArcGeometry, raanArcMaterial);
-    raanArcMesh.rotation.x = -1 * Math.PI / 2;
+    raanArcMesh.rotation.x = -Math.PI / 2;
+    raanArcMesh.visible = false;
     eciGroup.add(raanArcMesh);
 
-    const argPerigeeArcGeometry = new THREE.RingGeometry(8.5, 9.0, 32, 1, 0, 0);
+    const argPerigeeArcGeometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, 0);
     const argPerigeeArcMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FFFF,
+        color: 0xFF00FF,
         opacity: 0.75,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
         side: THREE.DoubleSide,
         transparent: true,
     });
     argPerigeeArcMesh = new THREE.Mesh(argPerigeeArcGeometry, argPerigeeArcMaterial);
     argPerigeeArcMesh.rotation.x = Math.PI / 2;
+    argPerigeeArcMesh.visible = false;
     pqwGroup.add(argPerigeeArcMesh);
 
     eciAxes = new THREE.Group();
@@ -754,11 +714,13 @@ function initialize() {
     visibilityButtons.forEach(button => {
         button.addEventListener('click', () => {
             const visible = button.classList.toggle('visible');
-            button.textContent = visible ? '⊙' : '✕';
 
             switch (button.id) {
                 case 'earthVisibilityButton':
                     earthMesh.visible = visible;
+                    break;
+                case 'orbitShapeVisibilityButton':
+                    orbitShapeMesh.visible = visible;
                     break;
                 case 'equatorialPlaneVisibilityButton':
                     equatorialPlaneMesh.visible = visible;
@@ -766,14 +728,23 @@ function initialize() {
                 case 'eclipticVisibilityButton':
                     eclipticMesh.visible = visible;
                     break;
-                case 'orbitShapeVisibilityButton':
-                    orbitShapeMesh.visible = visible;
+                case 'orbitalPlaneVisibilityButton':
+                    orbitalPlaneMesh.visible = visible;
                     break;
                 case 'eciVisibilityButton':
                     eciAxes.visible = visible;
                     break;
                 case 'pqwVisibilityButton':
                     pqwAxes.visible = visible;
+                    break;
+                case 'inclinationVisibilityButton':
+                    inclinationArcMesh.visible = visible;
+                    break;
+                case 'raanVisibilityButton':
+                    raanArcMesh.visible = visible;
+                    break;
+                case 'argPerigeeVisibilityButton':
+                    argPerigeeArcMesh.visible = visible;
                     break;
             }
         });
