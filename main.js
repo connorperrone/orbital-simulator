@@ -12,7 +12,6 @@ const textureLoader = new THREE.TextureLoader();
 
 // Standard gravitational parameter of Earth
 const mu = 3.986004418e14;
-
 const maxOrbitPoints = 400;
 
 const tleOrbitTab = document.getElementById('tleOrbitTab');
@@ -60,6 +59,8 @@ let pqwGroup; // Perifocal coordinate system (PQW)
 let eciAxes; // Arrows to visualize the ECI axes
 let pqwAxes; // Arrows to visualize the PQW axes
 let earthMesh;
+let starSphere;
+let constellationSphere;
 let equatorialPlaneMesh;
 let eclipticMesh;
 let orbitShapeMesh;
@@ -67,7 +68,6 @@ let orbitalPlaneMesh;
 let inclinationArcMesh;
 let raanArcMesh;
 let argPerigeeArcMesh;
-let skySphere;
 let satelliteMesh;
 
 // True if user has defined custom orbit, false if propagating with TLE data
@@ -587,8 +587,9 @@ function initialize() {
         });
 
         const celestialSphereGeometry = new THREE.SphereGeometry(500, 64, 64);
-        const starSphere = new THREE.Mesh(celestialSphereGeometry, starMaterial);
-        const constellationSphere = new THREE.Mesh(celestialSphereGeometry, constellationMaterial);
+        starSphere = new THREE.Mesh(celestialSphereGeometry, starMaterial);
+        constellationSphere = new THREE.Mesh(celestialSphereGeometry, constellationMaterial);
+        constellationSphere.visible = false;
 
         const celestialSphereGroup = new THREE.Group();
         celestialSphereGroup.add(starSphere);
@@ -745,6 +746,9 @@ function initialize() {
                     break;
                 case 'argPerigeeVisibilityButton':
                     argPerigeeArcMesh.visible = visible;
+                    break;
+                case 'constellationsVisibilityButton':
+                    constellationSphere.visible = visible;
                     break;
             }
         });
