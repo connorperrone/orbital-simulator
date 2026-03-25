@@ -531,9 +531,21 @@ function animate(time) {
     renderer.render(scene, camera);
 }
 
+function onWindowResize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+}
+
 function initialize() {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+    window.addEventListener('resize', onWindowResize);
 
     camera.position.set(15, 0, -15);
     controls.enableDamping = true;
