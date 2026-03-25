@@ -21,30 +21,27 @@
         width: 100vw;
       }
 
-      #leftColumn, #rightColumn {
+      .column {
         display: flex;
         flex-direction: column;
         gap: 12px;
         position: absolute;
         top: 20px;
-        width: 320px;
-      }
-
-      #leftColumn {
-        left: 20px;
+        width: clamp(260px, 22vw, 320px);
         max-height: calc(100vh - 40px);
         overflow-y: auto;
-        padding-right: 4px;
       }
-      #leftColumn::-webkit-scrollbar { width: 8px; }
-      #leftColumn::-webkit-scrollbar-thumb {
+
+      .column::-webkit-scrollbar { width: 8px; }
+      .column::-webkit-scrollbar-thumb {
         background: rgba(0, 255, 255, 0.2);
         border-radius: 4px;
       }
-      #leftColumn::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 255, 0.4); }
-      #leftColumn::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); }
+      .column::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 255, 0.4); }
+      .column::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); }
 
-      #rightColumn { right: 20px; }
+      #leftColumn { left: 20px; padding-right: 4px; }
+      #rightColumn { right: 20px; padding-right: 4px; }
       
       .panel {
         backdrop-filter: blur(4px);
@@ -241,7 +238,7 @@
   </head>
   <body>
     <div id="app"></div>
-    <div id="leftColumn">
+    <div id="leftColumn" class="column">
         <div class="panel" style="gap: 0px;">
           <div class="panelHeader collapsible">
             Orbit Specification
@@ -393,60 +390,70 @@
         </div>
     </div>
 
-    <div id="rightColumn">
+    <div id="rightColumn" class="column">
         <div class="panel">
-            <div class="panelHeader">Positional Data</div>
-            <div class="dataRow">
-                <span class="dataLabel">Latitude:</span>
-                <span class="dataValue" id="latitudeValue"></span>
+            <div class="panelHeader collapsible">
+              Positional Data
+              <span class="arrow">▼</span>
             </div>
-            <div class="dataRow">
-                <span class="dataLabel">Longitude:</span>
-                <span class="dataValue" id="longitudeValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Altitude:</span>
-                <span class="dataValue" id="altitudeValue"></span>
+            <div class="panelContent">
+              <div class="dataRow">
+                  <span class="dataLabel">Latitude:</span>
+                  <span class="dataValue" id="latitudeValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Longitude:</span>
+                  <span class="dataValue" id="longitudeValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Altitude:</span>
+                  <span class="dataValue" id="altitudeValue"></span>
+              </div>
             </div>
         </div>
 
         <div class="panel">
-            <div class="panelHeader">Orbital Elements</div>
-            <div class="dataRow">
-                <span class="dataLabel">Epoch:</span>
-                <span class="dataValue" id="epochValue"></span>
+            <div class="panelHeader collapsible">
+              Orbital Elements
+              <span class="arrow">▼</span>
             </div>
-            <div class="dataRow">
-                <span class="dataLabel">Semi-major axis (a):</span>
-                <span class="dataValue" id="semiMajorAxisValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Eccentricity (e):</span>
-                <span class="dataValue" id="eccentricityValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Inclination (i):</span>
-                <span class="dataValue" id="inclinationValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">RAAN (Ω):</span>
-                <span class="dataValue" id="raanValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Argument of Perigee (ω):</span>
-                <span class="dataValue" id="argPerigeeValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Mean Motion (n):</span>
-                <span class="dataValue" id="meanMotionValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">Mean Anomaly (M):</span>
-                <span class="dataValue" id="meanAnomalyValue"></span>
-            </div>
-            <div class="dataRow">
-                <span class="dataLabel">True Anomaly (v):</span>
-                <span class="dataValue" id="trueAnomalyValue"></span>
+            <div class="panelContent">
+              <div class="dataRow">
+                  <span class="dataLabel">Epoch:</span>
+                  <span class="dataValue" id="epochValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Semi-major axis (a):</span>
+                  <span class="dataValue" id="semiMajorAxisValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Eccentricity (e):</span>
+                  <span class="dataValue" id="eccentricityValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Inclination (i):</span>
+                  <span class="dataValue" id="inclinationValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">RAAN (Ω):</span>
+                  <span class="dataValue" id="raanValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Argument of Perigee (ω):</span>
+                  <span class="dataValue" id="argPerigeeValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Mean Motion (n):</span>
+                  <span class="dataValue" id="meanMotionValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">Mean Anomaly (M):</span>
+                  <span class="dataValue" id="meanAnomalyValue"></span>
+              </div>
+              <div class="dataRow">
+                  <span class="dataLabel">True Anomaly (v):</span>
+                  <span class="dataValue" id="trueAnomalyValue"></span>
+              </div>
             </div>
         </div>
     </div>
