@@ -68,6 +68,9 @@ let orbitalPlaneMesh;
 let inclinationArcMesh;
 let raanArcMesh;
 let argPerigeeArcMesh;
+let ascendingNodeMesh;
+let descendingNodeMesh;
+let nodesLineMesh;
 let satelliteMesh;
 
 // True if user has defined custom orbit, false if propagating with TLE data
@@ -249,6 +252,8 @@ setOrbitButton.addEventListener('click', () => {
     if (customMeanAnomalyAtEpoch < 0) customMeanAnomalyAtEpoch += (2 * Math.PI);
     meanAnomalyValue.textContent = (customMeanAnomalyAtEpoch * 180 / Math.PI).toFixed(3) + '°';
 
+    updateNodes();
+
     pqwGroup.add(satelliteMesh);
 
     // Update Simulation Controls panel
@@ -349,6 +354,8 @@ function updateOrbitShapeMesh() {
     }
     
     positionAttribute.needsUpdate = true;
+
+    updateNodes();
 }
 
 function rotatePqwGroup() {
@@ -370,6 +377,8 @@ function updateInclination() {
     inclinationArcMesh.geometry.dispose();
     inclinationArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customInclination);
     inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
+
+    updateNodes();
 }
 
 function updateRaan() {
@@ -382,6 +391,8 @@ function updateRaan() {
     raanArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customRaan);
 
     inclinationArcMesh.rotation.set(0, customRaan + (Math.PI / 2), 0);
+
+    updateNodes();
 }
 
 function updateArgPerigee() {
@@ -392,6 +403,48 @@ function updateArgPerigee() {
 
     argPerigeeArcMesh.geometry.dispose();
     argPerigeeArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, customArgPerigee);
+
+    updateNodes();
+}
+
+function updateNodes() {
+    const a = parseFloat(semiMajorAxisInput.value) || 7000;
+    const e = parseFloat(eccentricityInput.value) || 0;
+
+    if (isNaN(customInclination) || isNaN(customRaan) || customInclination === 0) return;
+
+    const h = new THREE.Vector3(
+        Math.sin(customInclination) * Math.sin(customRaan),
+        Math.cos(customInclination),
+        Math.sin(customInclination) * Math.cos(customRaan)
+    );
+
+    const K = new THREE.Vector3(0, 1, 0);
+    const N = new THREE.Vector3().crossVectors(K, h).normalize();
+
+    const r_ascending = (a * (1 - e ** 2)) / (1 + e * Math.cos(-customArgPerigee));
+    const r_descending = (a * (1 - e ** 2)) / (1 + e * Math.cos(-customArgPerigee + Math.PI));
+
+    const r_ascending_scene = r_ascending / 1000;
+    const r_descending_scene = r_descending / 1000;
+
+    const ascendingPoint = N.clone().multiplyScalar(r_ascending_scene);
+    const descendingPoint = N.clone().multiplyScalar(-r_descending_scene);
+    ascendingNodeMesh.position.copy(ascendingPoint);
+    descendingNodeMesh.position.copy(descendingPoint);
+
+    const lineDirection = new THREE.Vector3().subVectors(descendingPoint, ascendingPoint);
+    const lineLength = lineDirection.length();
+    if (lineLength > 0) {
+        // Position the line to be centered at the midpoint of the ascending and descending nodes
+        nodesLineMesh.position.copy(ascendingPoint.clone().add(descendingPoint).multiplyScalar(0.5));
+
+        // Rotate the line to point in the direction of the line of nodes
+        nodesLineMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lineDirection.normalize());
+
+        // Scale the line to connect the ascending and descending nodes
+        nodesLineMesh.scale.set(1, lineLength, 1);
+    }
 }
 
 function updateOrbitData(position, gmst) {
@@ -610,6 +663,33 @@ function initialize() {
         scene.add(celestialSphereGroup);
     });
 
+    const nodeGeometry = new THREE.SphereGeometry(0.2, 12, 12);
+    const ascendingNodeMaterial = new THREE.MeshBasicMaterial({color: 0x00FF00});
+    const descendingNodeMaterial = new THREE.MeshBasicMaterial({color: 0xFF0000});
+    ascendingNodeMesh = new THREE.Mesh(nodeGeometry, ascendingNodeMaterial);
+    descendingNodeMesh = new THREE.Mesh(nodeGeometry, descendingNodeMaterial);
+    
+    // Outer glow for nodes to be visually distinct
+    const nodeOuterGeometry = new THREE.SphereGeometry(0.32, 16, 16);
+    ascendingNodeMesh.add(new THREE.Mesh(
+        nodeOuterGeometry,
+        new THREE.MeshBasicMaterial({color: 0x00FF00, transparent: true, opacity: 0.28})
+    ));
+    descendingNodeMesh.add(new THREE.Mesh(
+        nodeOuterGeometry,
+        new THREE.MeshBasicMaterial({color: 0xFF0000, transparent: true, opacity: 0.28})
+    ));
+
+    eciGroup.add(ascendingNodeMesh);
+    eciGroup.add(descendingNodeMesh);
+    nodesLineMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 1, 16),
+        new THREE.MeshBasicMaterial({color: 0xFFFFFF, transparent: true, opacity: 0.9})
+    );
+    nodesLineMesh.visible = false;
+    eciGroup.add(nodesLineMesh);
+    updateNodes();
+
     const satelliteGeoemtry = new THREE.SphereGeometry(0.15, 8, 8);
     const satelliteMaterial = new THREE.MeshBasicMaterial({color: 0xFFFFFF});
     satelliteMesh = new THREE.Mesh(satelliteGeoemtry, satelliteMaterial);
@@ -759,9 +839,14 @@ function initialize() {
                 case 'argPerigeeVisibilityButton':
                     argPerigeeArcMesh.visible = visible;
                     break;
+                case 'nodesVisibilityButton':
+                    ascendingNodeMesh.visible = visible;
+                    descendingNodeMesh.visible = visible;
+                    nodesLineMesh.visible = visible;
+                    break;
                 case 'constellationsVisibilityButton':
                     constellationSphere.visible = visible;
-                    break;
+                    break;   
             }
         });
     });
