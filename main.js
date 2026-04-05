@@ -76,25 +76,27 @@ let satelliteMesh;
 // True if user has defined custom orbit, false if propagating with TLE data
 let customOrbit = false;
 
+let tleEpoch;
 let tleSemiMajorAxis;
 let tleEccentricity;
 let tleInclination;
 let tleRaan;
 let tleArgPerigee;
-let tleTrueAnomaly;
-let tleEpoch;
 let tleMeanMotion;
 let tleMeanAnomalyAtEpoch;
+let tleMeanAnomaly;
+let tleTrueAnomaly;
 
+let customEpoch;
 let customSemiMajorAxis;
 let customEccentricity;
 let customInclination = 0;
 let customRaan = 0;
 let customArgPerigee = 0;
-let customTrueAnomaly;
-let customEpoch;
 let customMeanMotion;
 let customMeanAnomalyAtEpoch;
+let customMeanAnomaly;
+let customTrueAnomaly;
 
 const milliseconds = 0;
 const seconds = 1;
@@ -115,25 +117,149 @@ let paused = true;
 let propagateForward = true;
 let lastUpdate = 0;
 
-tleOrbitTab.addEventListener('click', () => {
-    // Switch to this tab if it is not already selected
-    if (!tleOrbitTab.classList.contains('selected') && tleOrbitTabContent.classList.contains('hidden')) {
-        tleOrbitTab.classList.add('selected');
-        customOrbitTab.classList.remove('selected');
-        tleOrbitTabContent.classList.remove('hidden');
-        customOrbitTabContent.classList.add('hidden');
-    }
-});
+function switchOrbitTab(newMode) {
+    const switchToTle = (newMode === 'tle');
+    tleOrbitTab.classList.toggle('selected', switchToTle);
+    customOrbitTab.classList.toggle('selected', !switchToTle);
+    tleOrbitTabContent.classList.toggle('hidden', !switchToTle);
+    customOrbitTabContent.classList.toggle('hidden', switchToTle);
 
-customOrbitTab.addEventListener('click', () => {
-    // Switch to this tab if it is not already selected
-    if (!customOrbitTab.classList.contains('selected') && customOrbitTabContent.classList.contains('hidden')) {
-        customOrbitTab.classList.add('selected');
-        tleOrbitTab.classList.remove('selected');
-        customOrbitTabContent.classList.remove('hidden');
-        tleOrbitTabContent.classList.add('hidden');
+    customOrbit = !switchToTle;
+
+    if (switchToTle) {
+        if (satrec && date) {
+            pqwGroup.remove(satelliteMesh);
+            eciGroup.add(satelliteMesh);
+
+            positionAndVelocity = satellite.propagate(satrec, date);
+
+            // Dividing by 1,000 since each unit represents 1,000 km
+            satelliteMesh.position.set(
+                positionAndVelocity.position.x / 1000,
+                positionAndVelocity.position.z / 1000,
+                -positionAndVelocity.position.y / 1000
+            ); // x, z, -y to match Three JS' coordinate system
+
+            if (orbitPoints) {
+                const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
+                orbitPoints.geometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
+            }
+            orbitPointsIndex = 0;
+
+            updateOrbitShapeMesh(tleSemiMajorAxis ?? 6500, tleEccentricity ?? 0);
+            updateInclination(tleInclination ?? 0, tleRaan ?? 0);
+            updateRaan(tleRaan ?? 0);
+            updateArgPerigee(tleArgPerigee ?? 0);
+
+            // Update geodetic coordinates panel
+            updateGeodeticCoordinatesPanel(positionAndVelocity.position, satellite.gstime(date));
+
+            // Update mean and true anomaly
+            tleMeanAnomaly = calculateTleMeanAnomaly();
+            tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
+            meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
+            trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+        }
+    } else {
+        if (orbitPoints) {
+            const orbitPointsPositions = new Float32Array(maxOrbitPoints * 3);
+            orbitPoints.geometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
+        }
+        orbitPointsIndex = 0;
+
+        eciGroup.remove(satelliteMesh);
+        pqwGroup.add(satelliteMesh);
+
+        updateOrbitShapeMesh(customSemiMajorAxis ?? 6500, customEccentricity ?? 0);
+        updateInclination(customInclination ?? 0, customRaan ?? 0);
+        updateRaan(customRaan ?? 0);
+        updateArgPerigee(customArgPerigee ?? 0);
+
+        // If mean motion has been calculated, then a custom orbit was previously defined
+        if (customMeanMotion != null) {
+            const position = propagateCustomOrbit();
+            satelliteMesh.position.set(position.x, position.y, position.z);
+
+            // Update geodetic coordinates panel
+            position.applyQuaternion(pqwGroup.quaternion);
+            updateGeodeticCoordinatesPanel({x: position.x * 1000, y: -position.z * 1000, z: position.y * 1000}, satellite.gstime(date));
+        } else {
+            satelliteMesh.position.set(0, 0, 0);
+            latitudeValue.textContent = '';
+            longitudeValue.textContent = '';
+            altitudeValue.textContent = '';
+        }
     }
-});
+
+    updateOrbitalElementsPanel(newMode);
+
+    if (date) simulationDateValue.textContent = date.toUTCString();
+    paused = true;
+    pauseResumeButton.textContent = 'Propagate';
+}
+tleOrbitTab.addEventListener('click', () => switchOrbitTab('tle'));
+customOrbitTab.addEventListener('click', () => switchOrbitTab('custom'));
+
+// Parses the custom orbit values and converts degrees to radians or sets to null if invalid
+function parseCustomOrbitValues() {
+    customEpoch = epochInput.value ? new Date(epochInput.value + 'Z') : null;
+
+    customSemiMajorAxis = semiMajorAxisInput.valueAsNumber;
+    if (isNaN(customSemiMajorAxis) || customSemiMajorAxis < 0) customSemiMajorAxis = null;
+    customEccentricity = eccentricityInput.valueAsNumber;
+    if (isNaN(customEccentricity) || customEccentricity < 0 || customEccentricity >= 1) customEccentricity = null;
+
+    customInclination = inclinationInput.valueAsNumber;
+    if (isNaN(customInclination) || customInclination < 0 || customInclination > 180) {
+        customInclination = null;
+    } else {
+        customInclination = customInclination * Math.PI / 180;
+    }
+    customRaan = raanInput.valueAsNumber;
+    if (isNaN(customRaan) || customRaan < 0 || customRaan > 359.99) {
+        customRaan = null;
+    } else {
+        customRaan = customRaan * Math.PI / 180;
+    }
+    customArgPerigee = argPerigeeInput.valueAsNumber;
+    if (isNaN(customArgPerigee) || customArgPerigee < 0 || customArgPerigee > 359.99) {
+        customArgPerigee = null;
+    } else {
+        customArgPerigee = customArgPerigee * Math.PI / 180;
+    }
+    customTrueAnomaly = trueAnomalyInput.valueAsNumber;
+    if (isNaN(customTrueAnomaly) || customTrueAnomaly < 0 || customTrueAnomaly > 359.99) {
+        customTrueAnomaly = null;
+    } else {
+        customTrueAnomaly = customTrueAnomaly * Math.PI / 180;
+    }
+}
+
+// Updates the orbital elements panel with the current values for the given mode ('tle' or 'custom')
+function updateOrbitalElementsPanel(mode) {
+    const tleMode = (mode === 'tle');
+    const toDegrees = (r) => r != null ? r * 180 / Math.PI : null;
+
+    const epoch = tleMode ? tleEpoch : customEpoch;
+    const semiMajorAxis = tleMode ? tleSemiMajorAxis : customSemiMajorAxis;
+    const eccentricity = tleMode ? tleEccentricity : customEccentricity;
+    const inclination = toDegrees(tleMode ? tleInclination : customInclination);
+    const raan = toDegrees(tleMode ? tleRaan : customRaan);
+    const argPerigee = toDegrees(tleMode ? tleArgPerigee : customArgPerigee);
+    const meanMotion = tleMode ? tleMeanMotion : customMeanMotion;
+    const meanAnomaly = toDegrees(tleMode ? tleMeanAnomaly : customMeanAnomaly);
+    const trueAnomaly = toDegrees(tleMode ? tleTrueAnomaly : customTrueAnomaly);
+
+    epochValue.textContent = epoch != null ? epoch.toUTCString() : '';
+    semiMajorAxisValue.textContent = semiMajorAxis != null ? semiMajorAxis.toFixed(3) + ' km' : '';
+    eccentricityValue.textContent = eccentricity != null ? eccentricity.toFixed(5) : '';
+    inclinationValue.textContent = inclination != null ? inclination.toFixed(3) + '°' : '';
+    raanValue.textContent = raan != null ? raan.toFixed(3) + '°' : '';
+    argPerigeeValue.textContent = argPerigee != null ? argPerigee.toFixed(3) + '°' : '';
+    meanMotionValue.textContent = meanMotion != null ? meanMotion.toFixed(3) + ' rad/' + (tleMode ? 'min' : 'sec') : '';
+    meanAnomalyValue.textContent = meanAnomaly != null ? meanAnomaly.toFixed(3) + '°' : '';
+    trueAnomalyValue.textContent = trueAnomaly != null ? trueAnomaly.toFixed(3) + '°' : '';
+}
 
 async function fetchTle(noradId) {
     const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
@@ -170,9 +296,6 @@ fetchTleButton.addEventListener('click', async () => {
         satrec = satellite.twoline2satrec(tleLine1, tleLine2);
         
         // Update orbital elements
-        tleEpoch = new Date(Date.UTC(satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr, 0, 0));
-        tleEpoch.setTime(tleEpoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
-        epochValue.textContent = tleEpoch.toUTCString();
         tleSemiMajorAxis = Math.cbrt(mu / ((satrec.no / 60) ** 2)) / 1000;
         tleEccentricity = satrec.ecco;
         tleInclination = satrec.inclo;
@@ -180,19 +303,25 @@ fetchTleButton.addEventListener('click', async () => {
         tleArgPerigee = satrec.argpo;
         tleMeanMotion = satrec.no;
         tleMeanAnomalyAtEpoch = satrec.mo;
-        semiMajorAxisValue.textContent = tleSemiMajorAxis.toFixed(3) + ' km';
-        eccentricityValue.textContent = tleEccentricity.toFixed(5);
-        inclinationValue.textContent = (tleInclination * 180 / Math.PI).toFixed(3) + '°';
-        raanValue.textContent = (tleRaan * 180 / Math.PI).toFixed(3) + '°';
-        argPerigeeValue.textContent = (tleArgPerigee * 180 / Math.PI).toFixed(3) + '°';
-        meanMotionValue.textContent = tleMeanMotion.toFixed(3) + ' rad/min';
-        meanAnomalyValue.textContent = (tleMeanAnomalyAtEpoch * 180 / Math.PI).toFixed(3) + '°';
+        tleEpoch = new Date(Date.UTC(satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr, 0, 0));
+        tleEpoch.setTime(tleEpoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
 
         date = new Date(tleEpoch);
         positionAndVelocity = satellite.propagate(satrec, date);
 
+        tleMeanAnomaly = calculateTleMeanAnomaly();
         tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
-        trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+
+        // Update Earth's rotation and Sun's position
+        const gmst = satellite.gstime(date);
+        earthMesh.rotation.y = gmst;
+        updateSunPosition();
+
+        // Update UI for orbital elements
+        updateOrbitalElementsPanel('tle');
+
+        // Update geodetic coordinates panel
+        updateGeodeticCoordinatesPanel(positionAndVelocity.position, gmst);
 
         eciGroup.add(satelliteMesh);
         // Dividing by 1,000 since each unit represents 1,000 km
@@ -209,10 +338,10 @@ fetchTleButton.addEventListener('click', async () => {
         orbitPointsIndex = 0;
 
         customOrbit = false;
-        updateOrbitShapeMesh();
-        updateInclination();
-        updateRaan();
-        updateArgPerigee();
+        updateOrbitShapeMesh(tleSemiMajorAxis, tleEccentricity);
+        updateInclination(tleInclination, tleRaan);
+        updateRaan(tleRaan);
+        updateArgPerigee(tleArgPerigee);
 
         // Update Simulation Controls panel
         simulationDateValue.textContent = date.toUTCString();
@@ -224,41 +353,17 @@ fetchTleButton.addEventListener('click', async () => {
     }
 });
 
-function calculateTleTrueAnomaly(positionAndVelocity) {
-    const r = new THREE.Vector3(positionAndVelocity.position.x, positionAndVelocity.position.y, positionAndVelocity.position.z);
-    const v = new THREE.Vector3(positionAndVelocity.velocity.x, positionAndVelocity.velocity.y, positionAndVelocity.velocity.z);
-    const e = r.clone().multiplyScalar(((v.length() ** 2) / (mu / 1e9)) - (1 / r.length())).addScaledVector(v, -r.dot(v) / (mu / 1e9));
-    let trueAnomaly = Math.acos(e.dot(r) / (e.length() * r.length()));
-    if (r.dot(v) < 0) trueAnomaly = (2 * Math.PI) - trueAnomaly;
-    return trueAnomaly;
-}
-
 setOrbitButton.addEventListener('click', () => {
-    customSemiMajorAxis = semiMajorAxisInput.valueAsNumber || 7000;
-    semiMajorAxisValue.textContent = customSemiMajorAxis + ' km';
+    parseCustomOrbitValues();
 
-    customEccentricity = eccentricityInput.valueAsNumber || 0;
-    eccentricityValue.textContent = customEccentricity.toFixed(5);
-
-    customInclination = inclinationInput.valueAsNumber || 0;
-    inclinationValue.textContent = customInclination.toFixed(3) + '°';
-    customInclination = customInclination * Math.PI / 180;
-
-    customRaan = raanInput.valueAsNumber || 0;
-    raanValue.textContent = customRaan.toFixed(3) + '°';
-    customRaan = customRaan * Math.PI / 180;
-
-    customArgPerigee = argPerigeeInput.valueAsNumber || 0;
-    argPerigeeValue.textContent = customArgPerigee.toFixed(3) + '°';
-    customArgPerigee = customArgPerigee * Math.PI / 180;
-
-    customTrueAnomaly = trueAnomalyInput.valueAsNumber || 0;
-    trueAnomalyValue.textContent = customTrueAnomaly.toFixed(3) + '°';
-    customTrueAnomaly = customTrueAnomaly * Math.PI / 180;
-
-    customEpoch = epochInput.value ? new Date(epochInput.value + 'Z') : new Date();
-    epochValue.textContent = customEpoch.toUTCString();
+    if (customEpoch === null) customEpoch = new Date();
     date = new Date(customEpoch);
+    if (customSemiMajorAxis === null) customSemiMajorAxis = 7000;
+    if (customEccentricity === null) customEccentricity = 0;
+    if (customInclination === null) customInclination = 0;
+    if (customRaan === null) customRaan = 0;
+    if (customArgPerigee === null) customArgPerigee = 0;
+    if (customTrueAnomaly === null) customTrueAnomaly = 0;
 
     // Calculate mean motion now for subsequent calculations of mean anomaly
     customMeanMotion = Math.sqrt(mu / ((customSemiMajorAxis * 1000) ** 3));
@@ -271,15 +376,21 @@ setOrbitButton.addEventListener('click', () => {
     );
     customMeanAnomalyAtEpoch = E - (customEccentricity * Math.sin(E));
     if (customMeanAnomalyAtEpoch < 0) customMeanAnomalyAtEpoch += (2 * Math.PI);
-    meanAnomalyValue.textContent = (customMeanAnomalyAtEpoch * 180 / Math.PI).toFixed(3) + '°';
+
+    updateOrbitalElementsPanel('custom');
 
     customOrbit = true;
-    updateOrbitShapeMesh();
-    updateInclination();
-    updateRaan();
-    updateArgPerigee();
+    updateOrbitShapeMesh(customSemiMajorAxis, customEccentricity);
+    updateInclination(customInclination, customRaan);
+    updateRaan(customRaan);
+    updateArgPerigee(customArgPerigee);
 
     pqwGroup.add(satelliteMesh);
+
+    // Update Earth's rotation and Sun's position
+    const gmst = satellite.gstime(date);
+    earthMesh.rotation.y = gmst;
+    updateSunPosition();
 
     // Update Simulation Controls panel
     simulationDateValue.textContent = date.toUTCString();
@@ -356,22 +467,7 @@ function createOrbitShapeMesh() {
     return orbitShapeMesh;
 }
 
-function updateOrbitShapeMesh() {
-    let a, e;
-    if (customOrbit) {
-        a = parseFloat(semiMajorAxisInput.value);
-        if (isNaN(a) || a < 0) a = 7000;
-        customSemiMajorAxis = a;
-
-        e = parseFloat(eccentricityInput.value);
-        if (isNaN(e) || e < 0 || e >= 1) e = 0;
-        customEccentricity = e;
-    } else {
-        if (!satrec) return;
-        a = tleSemiMajorAxis;
-        e = tleEccentricity;
-    }
-
+function updateOrbitShapeMesh(a, e) {
     const positionAttribute = orbitShapeMesh.geometry.getAttribute('position');
     const positions = positionAttribute.array;
     const numSegments = 128;
@@ -412,19 +508,7 @@ function rotatePqwGroup() {
     pqwGroup.quaternion.copy(rotation);
 }
 
-function updateInclination() {
-    let i, raan;
-    if (customOrbit) {
-        i = parseFloat(inclinationInput.value);
-        if (isNaN(i) || i < 0 || i > 180) i = 0;
-        i = i * Math.PI / 180;
-        customInclination = i;
-        raan = customRaan;
-    } else {
-        if (!satrec) return;
-        i = tleInclination;
-        raan = tleRaan;
-    }
+function updateInclination(i, raan) {
     rotatePqwGroup();
 
     inclinationArcMesh.geometry.dispose();
@@ -434,38 +518,17 @@ function updateInclination() {
     updateNodes();
 }
 
-function updateRaan() {
-    let raan;
-    if (customOrbit) {
-        raan = parseFloat(raanInput.value);
-        if (isNaN(raan) || raan < 0 || raan > 359.99) raan = 0;
-        raan = raan * Math.PI / 180;
-        customRaan = raan;
-    } else {
-        if (!satrec) return;
-        raan = tleRaan;
-    }
+function updateRaan(raan) {
     rotatePqwGroup();
 
     raanArcMesh.geometry.dispose();
     raanArcMesh.geometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, raan);
-
     inclinationArcMesh.rotation.set(0, raan + (Math.PI / 2), 0);
 
     updateNodes();
 }
 
-function updateArgPerigee() {
-    let argPerigee;
-    if (customOrbit) {
-        argPerigee = parseFloat(argPerigeeInput.value);
-        if (isNaN(argPerigee) || argPerigee < 0 || argPerigee > 359.99) argPerigee = 0;
-        argPerigee = argPerigee * Math.PI / 180;
-        customArgPerigee = argPerigee;
-    } else {
-        if (!satrec) return;
-        argPerigee = tleArgPerigee;
-    }
+function updateArgPerigee(argPerigee) {
     rotatePqwGroup();
 
     argPerigeeArcMesh.geometry.dispose();
@@ -477,11 +540,11 @@ function updateArgPerigee() {
 function updateNodes() {
     let a, e, i, raan, argPerigee;
     if (customOrbit) {  
-        a = customSemiMajorAxis || 7000;
-        e = customEccentricity || 0;
-        i = customInclination || 0;
-        raan = customRaan || 0;
-        argPerigee = customArgPerigee || 0;
+        a = customSemiMajorAxis ?? 7000;
+        e = customEccentricity ?? 0;
+        i = customInclination ?? 0;
+        raan = customRaan ?? 0;
+        argPerigee = customArgPerigee ?? 0;
     } else {
         if (!satrec) return;
         a = tleSemiMajorAxis;
@@ -528,7 +591,7 @@ function updateNodes() {
     }
 }
 
-function updateOrbitData(position, gmst) {
+function updateGeodeticCoordinatesPanel(position, gmst) {
     const geodetic = satellite.eciToGeodetic(position, gmst);
     const latitude = satellite.degreesLat(geodetic.latitude);
     const longitude = satellite.degreesLong(geodetic.longitude);
@@ -537,6 +600,81 @@ function updateOrbitData(position, gmst) {
     latitudeValue.textContent = latitude.toFixed(5) + '°';
     longitudeValue.textContent = longitude.toFixed(5) + '°';
     altitudeValue.textContent = altitude.toFixed(2) + ' km';
+}
+
+function updateSunPosition() {
+    const jday = satellite.jday(date);
+    const sunPos = satellite.sunPos(jday);
+    const sunPositionScalar = 100; // Render the sun far enough away to look realistic
+    const sunPosition = new THREE.Vector3(
+        sunPos.rsun[0], // x
+        sunPos.rsun[2], // z
+        -sunPos.rsun[1] // -y
+    );
+    sunPosition.multiplyScalar(sunPositionScalar);
+    sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+}
+
+function calculateTleMeanAnomaly() {
+    const deltaT = (date - tleEpoch) / 60000;
+    let M = (tleMeanAnomalyAtEpoch + (tleMeanMotion * deltaT)) % (2 * Math.PI);
+    if (M < 0) M += (2 * Math.PI);
+    return M;
+}
+
+function calculateTleTrueAnomaly(positionAndVelocity) {
+    const r = new THREE.Vector3(positionAndVelocity.position.x, positionAndVelocity.position.y, positionAndVelocity.position.z);
+    const v = new THREE.Vector3(positionAndVelocity.velocity.x, positionAndVelocity.velocity.y, positionAndVelocity.velocity.z);
+    const e = r.clone().multiplyScalar(((v.length() ** 2) / (mu / 1e9)) - (1 / r.length())).addScaledVector(v, -r.dot(v) / (mu / 1e9));
+    let trueAnomaly = Math.acos(e.dot(r) / (e.length() * r.length()));
+    if (r.dot(v) < 0) trueAnomaly = (2 * Math.PI) - trueAnomaly;
+    return trueAnomaly;
+}
+
+function propagateCustomOrbit() {
+    // Calculate Mean Anomaly (M)
+    const deltaT = (date - customEpoch) / 1000;
+    let M = (customMeanAnomalyAtEpoch + (customMeanMotion * deltaT)) % (2 * Math.PI);
+    if (M < 0) M += (2 * Math.PI);
+    customMeanAnomaly = M;
+
+    // Solve for Eccentric Anomaly (E) with Newton-Raphson method
+    let E = M; // Initialize to M
+    const e = customEccentricity;
+    for (let i = 0; i < 10; i++) {
+        /*
+
+        Kepler's equation: M = E - (e * sin(E))
+        f(E) = E - (e * sin(E)) - M = 0
+        f'(E) = 1 - (e * cos(E)) = 0
+        E_(i+1) = E_(i) - f(E_(i))/f'(E_(i))
+
+        */
+        
+        let newE = E - (E - (e * Math.sin(E)) - M) / (1 - (e * Math.cos(E)));
+
+        if (Math.abs(newE - E) < 0.001) {
+            E = newE;
+            break;
+        }
+
+        E = newE;
+    }
+
+    // Calculate true anomaly
+    let trueAnomaly = 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
+    if (trueAnomaly < 0) trueAnomaly += (2 * Math.PI);
+    customTrueAnomaly = trueAnomaly;
+
+    // Update orbital elements panel
+    meanAnomalyValue.textContent = (M * 180 / Math.PI).toFixed(3) + '°';
+    trueAnomalyValue.textContent = (trueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+
+    // Calculate position in Perifocal coordinate system using E
+    let x = customSemiMajorAxis * (Math.cos(E) - e);
+    let y = customSemiMajorAxis * Math.sqrt(1 - (e ** 2)) * Math.sin(E);
+    satelliteMesh.position.set(x / 1000, 0, -y / 1000);
+    return new THREE.Vector3(x / 1000, 0, -y / 1000);
 }
 
 function animate(time) {
@@ -551,64 +689,15 @@ function animate(time) {
         // Update Earth's rotation and Sun's position
         const gmst = satellite.gstime(date);
         earthMesh.rotation.y = gmst;
-
-        const jday = satellite.jday(date);
-        const sunPos = satellite.sunPos(jday);
-        const sunPositionScalar = 100; // Render the sun far enough away to look realistic
-        const sunPosition = new THREE.Vector3(
-            sunPos.rsun[0], // x
-            sunPos.rsun[2], // z
-            -sunPos.rsun[1] // -y
-        );
-        sunPosition.multiplyScalar(sunPositionScalar);
-        sun.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+        updateSunPosition();
 
         if (customOrbit) {
             // Propagate with the custom orbital elements defined by the user
-
-            // Calculate Mean Anomaly (M)
-            const deltaT = (date - customEpoch) / 1000;
-            let M = (customMeanAnomalyAtEpoch + (customMeanMotion * deltaT)) % (2 * Math.PI);
-            if (M < 0) M += (2 * Math.PI);
-
-            // Solve for Eccentric Anomaly (E) with Newton-Raphson method
-            let E = M; // Initialize to M
-            const e = customEccentricity;
-            for (let i = 0; i < 10; i++) {
-                /*
-
-                Kepler's equation: M = E - (e * sin(E))
-                f(E) = E - (e * sin(E)) - M = 0
-                f'(E) = 1 - (e * cos(E)) = 0
-                E_(i+1) = E_(i) - f(E_(i))/f'(E_(i))
-
-                */
-                
-                let newE = E - (E - (e * Math.sin(E)) - M) / (1 - (e * Math.cos(E)));
-
-                if (Math.abs(newE - E) < 0.001) {
-                    E = newE;
-                    break;
-                }
-
-                E = newE;
-            }
-
-            // Calculate position in Perifocal coordinate system using E
-            let x = customSemiMajorAxis * (Math.cos(E) - e);
-            let y = customSemiMajorAxis * Math.sqrt(1 - (e ** 2)) * Math.sin(E);
-            satelliteMesh.position.set(x / 1000, 0, -y / 1000);
+            const position = propagateCustomOrbit();
 
             // Update geodetic coordinates panel
-            const position = new THREE.Vector3(x / 1000, 0, -y / 1000);
             position.applyQuaternion(pqwGroup.quaternion);
-            updateOrbitData({x: position.x * 1000, y: -position.z * 1000, z: position.y * 1000}, gmst);
-
-            // Update orbital elements panel
-            meanAnomalyValue.textContent = (M * 180 / Math.PI).toFixed(3) + '°';
-            let trueAnomaly = 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
-            if (trueAnomaly < 0) trueAnomaly += (2 * Math.PI);
-            trueAnomalyValue.textContent = (trueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+            updateGeodeticCoordinatesPanel({x: position.x * 1000, y: -position.z * 1000, z: position.y * 1000}, gmst);
         } else if (satrec) {
             // Propagate with TLE data if it exists
 
@@ -630,11 +719,9 @@ function animate(time) {
             orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
 
             // Update geodetic coordinates and orbital elements panels
-            updateOrbitData(positionAndVelocity.position, gmst);
-            const deltaT = (date - tleEpoch) / 60000;
-            let M = (satrec.mo + (satrec.no * deltaT)) % (2 * Math.PI);
-            if (M < 0) M += (2 * Math.PI);
-            meanAnomalyValue.textContent = (M * 180 / Math.PI).toFixed(3) + '°';
+            updateGeodeticCoordinatesPanel(positionAndVelocity.position, gmst);
+            tleMeanAnomaly = calculateTleMeanAnomaly();
+            meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
             tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
             trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
         }
@@ -686,7 +773,7 @@ function initialize() {
     controls.enableDamping = true;
     controls.minDistance = 7;
     controls.maxDistance = 50;
-    controls.update;
+    controls.update();
 
     // Ambient light to allow some visibility for where the sun doesn't hit the Earth
     const ambientLight = new THREE.AmbientLight(0x404040, 2.0);
@@ -804,17 +891,60 @@ function initialize() {
     orbitShapeMesh = createOrbitShapeMesh();
     orbitShapeMesh.visible = false;
     pqwGroup.add(orbitShapeMesh);
-    updateOrbitShapeMesh();
+    updateOrbitShapeMesh(6500, 0);
     orbitalPlaneMesh = new THREE.GridHelper(30, 30, 0x00FFFF, 0x00FFFF);
     orbitalPlaneMesh.material.transparent = true;
     orbitalPlaneMesh.material.opacity = 0.4;
     orbitalPlaneMesh.visible = false;
     pqwGroup.add(orbitalPlaneMesh);
-    semiMajorAxisInput.addEventListener('input', updateOrbitShapeMesh);
-    eccentricityInput.addEventListener('input', updateOrbitShapeMesh);
-    inclinationInput.addEventListener('input', updateInclination);
-    raanInput.addEventListener('input', updateRaan);
-    argPerigeeInput.addEventListener('input', updateArgPerigee);
+    semiMajorAxisInput.addEventListener('input', (event) => {
+        let a = parseFloat(event.target.value);
+        if (isNaN(a) || a < 0) {
+            a = 6500;
+        } else {
+            customSemiMajorAxis = a;
+        }
+        updateOrbitShapeMesh(a, customEccentricity ?? 0);
+    });
+    eccentricityInput.addEventListener('input', (event) => {
+        let e = parseFloat(event.target.value);
+        if (isNaN(e) || e < 0 || e >= 1) {
+            e = 0;
+        } else {
+            customEccentricity = e;
+        }
+        updateOrbitShapeMesh(customSemiMajorAxis ?? 6500, e);
+    });
+    inclinationInput.addEventListener('input', (event) => {
+        let i = parseFloat(event.target.value);
+        if (isNaN(i) || i < 0 || i > 180) {
+            i = 0;
+        } else {
+            i = i * Math.PI / 180;
+            customInclination = i;
+        }
+        updateInclination(i, customRaan ?? 0);
+    });
+    raanInput.addEventListener('input', (event) => {
+        let raan = parseFloat(event.target.value);
+        if (isNaN(raan) || raan < 0 || raan > 359.99) {
+            raan = 0;
+        } else {
+            raan = raan * Math.PI / 180;
+            customRaan = raan;
+        }
+        updateRaan(raan);
+    });
+    argPerigeeInput.addEventListener('input', (event) => {
+        let argPerigee = parseFloat(event.target.value);
+        if (isNaN(argPerigee) || argPerigee < 0 || argPerigee > 359.99) {
+            argPerigee = 0;
+        } else {
+            argPerigee = argPerigee * Math.PI / 180;
+            customArgPerigee = argPerigee;
+        }
+        updateArgPerigee(argPerigee);
+    });
     rotatePqwGroup();
 
     const inclinationArcGeometry = new THREE.RingGeometry(7.0, 7.2, 32, 1, 0, 0);
