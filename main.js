@@ -109,13 +109,16 @@ let timeBetweenUnit = milliseconds;
 let updateIntervalMs = 250; // The time between updates in milliseconds
 
 let satrec;
-let positionAndVelocity;
+let state;
 let date; // Simulation date
 let orbitPoints;
 let orbitPointsIndex;
 let paused = true;
 let propagateForward = true;
 let lastUpdate = 0;
+
+let lastTLEUpdate = 0; // Last time TLE data was updated with mean elements
+let T = 0; // Orbital period in seconds
 
 function switchOrbitTab(newMode) {
     const switchToTle = (newMode === 'tle');
@@ -131,13 +134,20 @@ function switchOrbitTab(newMode) {
             pqwGroup.remove(satelliteMesh);
             eciGroup.add(satelliteMesh);
 
-            positionAndVelocity = satellite.propagate(satrec, date);
+            state = satellite.propagate(satrec, date);
+            tleSemiMajorAxis = state.meanElements.am * 6378.135; // Convert from Earth radii to kilometers
+            tleEccentricity = state.meanElements.em;
+            tleInclination = state.meanElements.im;
+            tleRaan = state.meanElements.Om;
+            tleArgPerigee = state.meanElements.om;
+            tleMeanMotion = state.meanElements.nm;
+            tleMeanAnomaly = state.meanElements.mm;
 
             // Dividing by 1,000 since each unit represents 1,000 km
             satelliteMesh.position.set(
-                positionAndVelocity.position.x / 1000,
-                positionAndVelocity.position.z / 1000,
-                -positionAndVelocity.position.y / 1000
+                state.position.x / 1000,
+                state.position.z / 1000,
+                -state.position.y / 1000
             ); // x, z, -y to match Three JS' coordinate system
 
             if (orbitPoints) {
@@ -152,11 +162,11 @@ function switchOrbitTab(newMode) {
             updateArgPerigee(tleArgPerigee ?? 0);
 
             // Update geodetic coordinates panel
-            updateGeodeticCoordinatesPanel(positionAndVelocity.position, satellite.gstime(date));
+            updateGeodeticCoordinatesPanel(state.position, satellite.gstime(date));
 
             // Update mean and true anomaly
             tleMeanAnomaly = calculateTleMeanAnomaly();
-            tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
+            tleTrueAnomaly = calculateTleTrueAnomaly(state);
             meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
             trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
         }
@@ -307,10 +317,10 @@ fetchTleButton.addEventListener('click', async () => {
         tleEpoch.setTime(tleEpoch.getTime() + (satrec.epochdays * 1000 * 60 * 60 * 24));
 
         date = new Date(tleEpoch);
-        positionAndVelocity = satellite.propagate(satrec, date);
+        state = satellite.propagate(satrec, date);
 
         tleMeanAnomaly = calculateTleMeanAnomaly();
-        tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
+        tleTrueAnomaly = calculateTleTrueAnomaly(state);
 
         // Update Earth's rotation and Sun's position
         const gmst = satellite.gstime(date);
@@ -321,14 +331,14 @@ fetchTleButton.addEventListener('click', async () => {
         updateOrbitalElementsPanel('tle');
 
         // Update geodetic coordinates panel
-        updateGeodeticCoordinatesPanel(positionAndVelocity.position, gmst);
+        updateGeodeticCoordinatesPanel(state.position, gmst);
 
         eciGroup.add(satelliteMesh);
         // Dividing by 1,000 since each unit represents 1,000 km
         satelliteMesh.position.set(
-            positionAndVelocity.position.x / 1000,
-            positionAndVelocity.position.z / 1000,
-            -positionAndVelocity.position.y / 1000
+            state.position.x / 1000,
+            state.position.z / 1000,
+            -state.position.y / 1000
         ); // x, z, -y to match Three JS' coordinate system
         
         if (orbitPoints) {
@@ -700,13 +710,31 @@ function animate(time) {
             updateGeodeticCoordinatesPanel({x: position.x * 1000, y: -position.z * 1000, z: position.y * 1000}, gmst);
         } else if (satrec) {
             // Propagate with TLE data if it exists
-
-            positionAndVelocity = satellite.propagate(satrec, date);
+            state = satellite.propagate(satrec, date);
+            T = 2 * Math.PI * Math.sqrt((tleSemiMajorAxis * 1000) ** 3 / mu);
+            // Update TLE data with mean elements every 1/4 of the orbital period T
+            // (1/4 is arbitrary based on smoothness of changes with performance considerations)
+            if (date.getTime() - lastTLEUpdate >= T / 4 * 1000) {
+                tleSemiMajorAxis = state.meanElements.am * 6378.135; // Convert from Earth radii to kilometers
+                tleEccentricity = state.meanElements.em;
+                tleInclination = state.meanElements.im;
+                tleRaan = state.meanElements.Om;
+                tleArgPerigee = state.meanElements.om;
+                tleMeanMotion = state.meanElements.nm;
+                tleMeanAnomaly = state.meanElements.mm;
+                updateOrbitShapeMesh(tleSemiMajorAxis, tleEccentricity);
+                updateInclination(tleInclination, tleRaan);
+                updateRaan(tleRaan);
+                updateArgPerigee(tleArgPerigee);
+                updateNodes();
+                updateOrbitalElementsPanel('tle');
+                lastTLEUpdate = date.getTime();
+            }
 
             // Dividing by 1,000 since each unit represents 1,000 km
-            const x = positionAndVelocity.position.x / 1000;
-            const y = positionAndVelocity.position.y / 1000;
-            const z = positionAndVelocity.position.z / 1000;
+            const x = state.position.x / 1000;
+            const y = state.position.y / 1000;
+            const z = state.position.z / 1000;
             satelliteMesh.position.set(x, z, -y); // x, z, -y to match Three JS' coordinate system
 
             const orbitPointsPositionAttribute = orbitPoints.geometry.getAttribute('position');
@@ -719,10 +747,10 @@ function animate(time) {
             orbitPointsIndex = (orbitPointsIndex + 1) % maxOrbitPoints;
 
             // Update geodetic coordinates and orbital elements panels
-            updateGeodeticCoordinatesPanel(positionAndVelocity.position, gmst);
+            updateGeodeticCoordinatesPanel(state.position, gmst);
             tleMeanAnomaly = calculateTleMeanAnomaly();
             meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
-            tleTrueAnomaly = calculateTleTrueAnomaly(positionAndVelocity);
+            tleTrueAnomaly = calculateTleTrueAnomaly(state);
             trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
         }
 
