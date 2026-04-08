@@ -14,6 +14,9 @@ const textureLoader = new THREE.TextureLoader();
 const mu = 3.986004418e14;
 const maxOrbitPoints = 400;
 
+// Time to live for TLE data in cache
+const tleCacheTtl = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
 const tleOrbitTab = document.getElementById('tleOrbitTab');
 const tleOrbitTabContent = document.getElementById('tleOrbitTabContent');
 const customOrbitTab = document.getElementById('customOrbitTab');
@@ -21,6 +24,7 @@ const customOrbitTabContent = document.getElementById('customOrbitTabContent');
 
 const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
+const tleFetchStatus = document.getElementById('tleFetchStatus');
 
 const semiMajorAxisInput = document.getElementById('semiMajorAxisInput');
 const eccentricityInput = document.getElementById('eccentricityInput');
@@ -281,6 +285,24 @@ async function fetchTle(noradId) {
     return response.text();
 }
 
+// Fetches TLE data for the given NORAD ID or returns cached data if it has been fetched within the last 2 hours
+async function getTLE(noradId) {
+    const now = Date.now();
+    const key = `tle_cache_${noradId}`;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+        const { tle, fetchedAt } = JSON.parse(cached);
+        if (now - fetchedAt < tleCacheTtl) {
+            const minutesAgo = Math.round((now - fetchedAt) / 60000);
+            return { tle, fromCache: true, minutesAgo };
+        }
+    }
+
+    const tle = await fetchTle(noradId);
+    localStorage.setItem(key, JSON.stringify({ tle, fetchedAt: now }));
+    return { tle, fromCache: false };
+}
+
 fetchTleButton.addEventListener('click', async () => {
     const noradId = noradIdInput.value.trim();
     if (!noradId || isNaN(noradId) || noradId.length > 9) {
@@ -289,11 +311,10 @@ fetchTleButton.addEventListener('click', async () => {
     }
     console.log('Fetching TLE for NORAD ID:', noradId);
     try {
-        // const tle = await fetchTle(noradId);
-        // console.log(tle);
-
-        // Hard-coded TLE data to reduce requests during development
-        const tle = 'ISS (ZARYA)             \n1 25544U 98067A   26040.56801308  .00009074  00000+0  17540-3 0  9992\n2 25544  51.6311 211.3720 0011129  80.8535 279.3711 15.48504497551972\n';
+        const { tle, fromCache, minutesAgo } = await getTLE(noradId);
+        tleFetchStatus.textContent = fromCache
+            ? `TLE loaded from cache (fetched ${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago)`
+            : 'TLE fetched from Celestrak';
 
         const tleLines = tle.split('\n');
         if (tleLines.length != 4) {
@@ -358,6 +379,7 @@ fetchTleButton.addEventListener('click', async () => {
         paused = false;
         pauseResumeButton.textContent = 'Pause';
     } catch (error) {
+        tleFetchStatus.textContent = '';
         alert(error.message);
         console.error(`Caught error while fetching TLE: ${error}`);
     }
