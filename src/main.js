@@ -1,3 +1,4 @@
+import './styles.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
@@ -845,22 +846,22 @@ function initialize() {
     // Letting each unit be 1,000 km, we get a radius of 6.378 units since Earth's radius is 6,378 km
     const earthGeometry = new THREE.SphereGeometry(6.378, 64, 32);
     const earthMaterial = new THREE.MeshPhongMaterial({
-        map: textureLoader.load('./assets/textures/earth_color_map.png'),
-        bumpMap: textureLoader.load('./assets/textures/earth_topography_map.jpg'),
+        map: textureLoader.load(new URL('../assets/textures/earth_color_map.png', import.meta.url).href),
+        bumpMap: textureLoader.load(new URL('../assets/textures/earth_topography_map.jpg', import.meta.url).href),
         bumpScale: 0.03,
     });
     earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     eciGroup.add(earthMesh);
     
     const exrLoader = new EXRLoader();
-    exrLoader.load('./assets/textures/starmap_2020_4k.exr', (texture) => {
+    exrLoader.load(new URL('../assets/textures/starmap_2020_4k.exr', import.meta.url).href, (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
         const starMaterial = new THREE.MeshBasicMaterial({
             map: texture,
             side: THREE.BackSide,
         });
 
-        const constellationTexture = textureLoader.load('./assets/textures/constellation_figures_8k.jpg');
+        const constellationTexture = textureLoader.load(new URL('../assets/textures/constellation_figures_8k.jpg', import.meta.url).href);
         constellationTexture.mapping = THREE.EquirectangularReflectionMapping;
         const constellationMaterial = new THREE.MeshBasicMaterial({
             blending: THREE.AdditiveBlending,
@@ -874,7 +875,6 @@ function initialize() {
         starSphere = new THREE.Mesh(celestialSphereGeometry, starMaterial);
         constellationSphere = new THREE.Mesh(celestialSphereGeometry, constellationMaterial);
         constellationSphere.visible = false;
-
         const celestialSphereGroup = new THREE.Group();
         celestialSphereGroup.add(starSphere);
         celestialSphereGroup.add(constellationSphere);

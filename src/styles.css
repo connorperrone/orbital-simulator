@@ -1,0 +1,229 @@
+﻿:root {
+  --theme-color: #00FFFF;
+  font-family: monospace;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  height: 100vh;
+  width: 100vw;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: absolute;
+  top: 20px;
+  width: clamp(260px, 22vw, 320px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.column::-webkit-scrollbar { width: 8px; }
+.column::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.2);
+  border-radius: 4px;
+}
+.column::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 255, 0.4); }
+.column::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); }
+
+#leftColumn { left: 20px; padding-right: 4px; }
+#rightColumn { right: 20px; padding-right: 4px; }
+
+.panel {
+  backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.panelHeader {
+  border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+  color: var(--theme-color);
+  font-size: 14px;
+  font-weight: bold;
+  padding-bottom: 4px;
+  user-select: none;
+}
+
+.panelHeader.collapsible {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+
+.panelHeader.collapsible:hover {
+  color: #FFFFFF;
+}
+
+.arrow {
+  transition: transform 0.3s ease;
+}
+
+.panelHeader.closed .arrow {
+  transform: rotate(-90deg);
+}
+
+.panelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panelContent.closed {
+  display: none;
+}
+
+.group {
+  display: flex;
+  gap: 4px;
+}
+
+.group.vertical {
+  flex-direction: column;
+}
+
+label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+input, select, button {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--theme-color);
+  border-radius: 4px;
+  color: #FFFFFF;
+  font-size: 13px;
+  outline: none;
+  padding: 8px;
+  transition: all 0.3s ease;
+}
+
+input {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+button {
+  background-color: rgba(0, 255, 255, 0.1);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: var(--theme-color);
+  box-shadow: 0 0 10px var(--theme-color);
+  color: #000000;
+}
+
+select {
+  cursor: pointer;
+}
+
+option {
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+.dataRow {
+  display: flex;
+  font-size: 13px;
+  justify-self: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 0;
+}
+
+.dataRow:last-child {
+  border-bottom: none;
+}
+
+.dataLabel {
+  color: var(--theme-color);
+  opacity: 0.8;
+  padding-right: 8px;
+}
+
+.dataValue {
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.tab {
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-top: none;
+  color: #FFFFFF;
+  cursor: pointer;
+  opacity: 0.8;
+  padding: 4px;
+}
+
+.tab:hover {
+  opacity: 0.7;
+}
+
+.tab.selected {
+  background-color: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  border-top: none;
+  color: var(--theme-color);
+  cursor: default;
+  font-weight: bold;
+  opacity: 1.0;
+}
+
+.hidden {
+  display: none;
+}
+
+.halfColumnWidth {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.halfColumnWidth input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.visibilityRow {
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.visibilityRow:last-child { padding-bottom: 0px; }
+
+.visibilityButton {
+  align-items: center;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  font-size: 13px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0px 8px;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.visibilityButton:hover {
+  background-color: rgba(0, 255, 255, 0.2);
+  color: #FFFFFF;
+}
+
+.visibilityButton.visible {
+  background-color: rgba(0, 255, 255, 0.1);
+  color: var(--theme-color);
+}
