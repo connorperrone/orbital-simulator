@@ -36,7 +36,7 @@ export function propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch
 
         Kepler's equation: M = E - (e * sin(E))
         f(E) = E - (e * sin(E)) - M = 0
-        f'(E) = 1 - (e * cos(E)) = 0
+        f'(E) = 1 - (e * cos(E))
         E_(i+1) = E_(i) - f(E_(i))/f'(E_(i))
 
         */
