@@ -167,7 +167,7 @@ function switchOrbitTab(newMode) {
 
     updateOrbitalElementsPanel(newMode);
 
-    if (date) simulationDateValue.textContent = date.toUTCString();
+    if (date) simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     paused = !liveTracking || !date;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 }
@@ -243,7 +243,7 @@ fetchTleButton.addEventListener('click', async () => {
         scene.updateNodes(tleSemiMajorAxis, tleEccentricity, tleInclination, tleRaan, tleArgPerigee);
 
         // Update Simulation Controls panel
-        simulationDateValue.textContent = date.toUTCString();
+        simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
         paused = false;
         pauseResumeButton.textContent = 'Pause';
     } catch (error) {
@@ -294,7 +294,7 @@ setOrbitButton.addEventListener('click', () => {
     scene.updateSunPosition(satellite.sunPos(satellite.jday(date)));
 
     // Update Simulation Controls panel
-    simulationDateValue.textContent = date.toUTCString();
+    simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     paused = false;
     pauseResumeButton.textContent = 'Pause';
 });
@@ -535,7 +535,7 @@ function animate(time) {
                     break;
             }
         }
-        simulationDateValue.textContent = date.toUTCString();
+        simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     }
 
     scene.render();
