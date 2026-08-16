@@ -61,6 +61,7 @@ let tleMeanAnomalyAtEpoch;
 let tleMeanAnomaly;
 let tleTrueAnomaly;
 
+let customOrbitDefined = false;
 let customEpoch;
 let customSemiMajorAxis;
 let customEccentricity;
@@ -137,6 +138,11 @@ function switchOrbitTab(newMode) {
             tleTrueAnomaly = calculateTleTrueAnomaly(state);
             meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
             trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+        } else {
+            scene.setSatellitePosition(0, 0, 0);
+            latitudeValue.textContent = '';
+            longitudeValue.textContent = '';
+            altitudeValue.textContent = '';
         }
     } else {
         scene.setMode('custom');
@@ -148,8 +154,7 @@ function switchOrbitTab(newMode) {
         scene.updateArgPerigee(customInclination ?? 0, customRaan ?? 0, customArgPerigee ?? 0);
         scene.updateNodes(customSemiMajorAxis ?? 6500, customEccentricity ?? 0, customInclination ?? 0, customRaan ?? 0, customArgPerigee ?? 0);
 
-        // If mean motion has been calculated, then a custom orbit was previously defined
-        if (customMeanMotion != null) {
+        if (customOrbitDefined) {
             const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
             const position = result.position;
             scene.setSatellitePosition(position.x, position.y, position.z);
@@ -280,6 +285,7 @@ setOrbitButton.addEventListener('click', () => {
     updateOrbitalElementsPanel('custom');
 
     customOrbit = true;
+    customOrbitDefined = true;
     scene.updateOrbitShapeMesh(customSemiMajorAxis, customEccentricity);
     scene.updateInclination(customInclination, customRaan, customArgPerigee);
     scene.updateRaan(customInclination, customRaan, customArgPerigee);
@@ -457,22 +463,24 @@ function animate(time) {
         scene.updateSunPosition(satellite.sunPos(satellite.jday(date)));
 
         if (customOrbit) {
-            // Propagate with the custom orbital elements defined by the user
-            const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
-            const position = result.position;
-            customMeanAnomaly = result.meanAnomaly;
-            customTrueAnomaly = result.trueAnomaly;
+            if (customOrbitDefined) {
+                // Propagate with the custom orbital elements defined by the user
+                const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
+                const position = result.position;
+                customMeanAnomaly = result.meanAnomaly;
+                customTrueAnomaly = result.trueAnomaly;
 
-            // Update satellite position
-            scene.setSatellitePosition(position.x, position.y, position.z);
+                // Update satellite position
+                scene.setSatellitePosition(position.x, position.y, position.z);
 
-            // Update orbital elements panel
-            meanAnomalyValue.textContent = (customMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
-            trueAnomalyValue.textContent = (customTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+                // Update orbital elements panel
+                meanAnomalyValue.textContent = (customMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
+                trueAnomalyValue.textContent = (customTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
 
-            // Update geodetic coordinates panel
-            const positionECI = scene.convertPQWToECI(position);
-            updateGeodeticCoordinatesPanel({x: positionECI.x * 1000, y: -positionECI.z * 1000, z: positionECI.y * 1000}, gmst);
+                // Update geodetic coordinates panel
+                const positionECI = scene.convertPQWToECI(position);
+                updateGeodeticCoordinatesPanel({x: positionECI.x * 1000, y: -positionECI.z * 1000, z: positionECI.y * 1000}, gmst);
+            }
         } else if (satrec) {
             // Propagate with TLE data if it exists
             state = satellite.propagate(satrec, date);
