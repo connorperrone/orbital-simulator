@@ -1,8 +1,10 @@
-name: Deploy to GitHub pages
+name: Build and deploy
 
 on:
-  # Runs on pushes to main
+  # Runs on pushes to main, and on pull requests into main
   push:
+    branches: ['main']
+  pull_request:
     branches: ['main']
 
   # Allows running this workflow manually from the Actions tab
@@ -20,10 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,12 +36,31 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: './dist'
+
+  deploy:
+    # Deploy on pushes to main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: './dist'
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          # Upload dist folder
           path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
