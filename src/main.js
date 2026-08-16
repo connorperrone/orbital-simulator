@@ -22,6 +22,8 @@ const trueAnomalyInput = document.getElementById('trueAnomalyInput');
 const epochInput = document.getElementById('epochInput');
 const setOrbitButton = document.getElementById('setOrbitButton');
 
+const liveTrackingToggle = document.getElementById('liveTrackingToggle');
+const timeStepControls = document.getElementById('timeStepControls');
 const timeStepInput = document.getElementById('timeStepInput');
 const timeStepUnitSelect = document.getElementById('timeStepUnit');
 const setTimeStepButton = document.getElementById('setTimeStepButton');
@@ -84,6 +86,7 @@ let satrec;
 let state;
 let date; // Simulation date
 let paused = true;
+let liveTracking = true;
 let propagateForward = true;
 let lastUpdate = 0;
 
@@ -165,8 +168,8 @@ function switchOrbitTab(newMode) {
     updateOrbitalElementsPanel(newMode);
 
     if (date) simulationDateValue.textContent = date.toUTCString();
-    paused = true;
-    pauseResumeButton.textContent = 'Propagate';
+    paused = !liveTracking || !date;
+    pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 }
 tleOrbitTab.addEventListener('click', () => switchOrbitTab('tle'));
 customOrbitTab.addEventListener('click', () => switchOrbitTab('custom'));
@@ -296,6 +299,14 @@ setOrbitButton.addEventListener('click', () => {
     pauseResumeButton.textContent = 'Pause';
 });
 
+liveTrackingToggle.addEventListener('change', () => {
+    liveTracking = liveTrackingToggle.checked;
+    timeStepControls.classList.toggle('hidden', liveTracking);
+    timeDirectionSelect.classList.toggle('hidden', liveTracking);
+    paused = !liveTracking || !date;
+    pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
+});
+
 setTimeStepButton.addEventListener('click', () => {
     const value = timeStepInput.valueAsNumber;
     if (isNaN(value)) {
@@ -347,6 +358,7 @@ setTimeBetweenButton.addEventListener('click', () => {
 });
 
 pauseResumeButton.addEventListener('click', () => {
+    if (!date) return;
     paused = !paused;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
@@ -436,6 +448,9 @@ function animate(time) {
     // Propagate orbit if not paused and the update interval has passed
     if (!paused && time - lastUpdate >= updateIntervalMs) {
 
+        // Synchronizes date with current time if live tracking is enabled
+        if (liveTracking) date = new Date();
+
         // Update Earth's rotation and Sun's position
         const gmst = satellite.gstime(date);
         scene.updateEarthRotation(gmst);
@@ -499,24 +514,26 @@ function animate(time) {
 
         // Update simulated time and lastUpdate variable
         lastUpdate = time;
-        switch (timeStepUnit) {
-            case milliseconds:
-                date.setMilliseconds(date.getMilliseconds() + signedTimeStep);
-                break;
-            case seconds:
-                date.setSeconds(date.getSeconds() + signedTimeStep);
-                break;
-            case minutes:
-                date.setMinutes(date.getMinutes() + signedTimeStep);
-                break;
-            case hours:
-                date.setHours(date.getHours() + signedTimeStep);
-                break;
-            default:
-                console.log('Invalid time step unit. Setting to seconds...');
-                timeStepUnit = seconds;
-                date.setSeconds(date.getSeconds() + signedTimeStep);
-                break;
+        if (!liveTracking) {
+            switch (timeStepUnit) {
+                case milliseconds:
+                    date.setMilliseconds(date.getMilliseconds() + signedTimeStep);
+                    break;
+                case seconds:
+                    date.setSeconds(date.getSeconds() + signedTimeStep);
+                    break;
+                case minutes:
+                    date.setMinutes(date.getMinutes() + signedTimeStep);
+                    break;
+                case hours:
+                    date.setHours(date.getHours() + signedTimeStep);
+                    break;
+                default:
+                    console.log('Invalid time step unit. Setting to seconds...');
+                    timeStepUnit = seconds;
+                    date.setSeconds(date.getSeconds() + signedTimeStep);
+                    break;
+            }
         }
         simulationDateValue.textContent = date.toUTCString();
     }

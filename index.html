@@ -122,7 +122,11 @@
               <span class="arrow">▼</span>
             </div>
             <div class="panelContent">
-              <div class="group vertical">
+              <div class="dataRow visibilityRow" style="padding-bottom: 0;">
+                  <label for="liveTrackingToggle" class="dataLabel">Live Tracking</label>
+                  <input id="liveTrackingToggle" type="checkbox" checked>
+              </div>
+              <div id="timeStepControls" class="group vertical hidden" style="padding-top: 12px;">
                   <label>Time Step</label>
                   <div class="group">
                       <input id="timeStepInput" type="number" value="30">
@@ -150,9 +154,9 @@
                   <label>Simulation Date</label>
                   <span class="dataValue" id="simulationDateValue">N/A</span>
               </div>
-              <div class="group">
+              <div class="group" style="padding-top: 12px;">
                   <button id="pauseResumeButton" style="flex: 1;">Pause</button>
-                  <select id="timeDirection" style="flex: 1;">
+                  <select id="timeDirection" class="hidden" style="flex: 1;">
                       <option value="Forward">Forward</option>
                       <option value="Reverse">Reverse</option>
                   </select>
