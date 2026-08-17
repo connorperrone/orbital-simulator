@@ -30,6 +30,7 @@ const setTimeStepButton = document.getElementById('setTimeStepButton');
 const timeBetweenInput = document.getElementById('timeBetweenInput');
 const timeBetweenUnitSelect = document.getElementById('timeBetweenUnit');
 const setTimeBetweenButton = document.getElementById('setTimeBetweenButton');
+const activeSimulationControls = document.getElementById('activeSimulationControls');
 const simulationDateValue = document.getElementById('simulationDateValue');
 const pauseResumeButton = document.getElementById('pauseResumeButton');
 const timeDirectionSelect = document.getElementById('timeDirection');
@@ -172,9 +173,12 @@ function switchOrbitTab(newMode) {
 
     updateOrbitalElementsPanel(newMode);
 
+    const hasDefinedOrbit = customOrbit ? customOrbitDefined : satrec;
+    activeSimulationControls.classList.toggle('hidden', !hasDefinedOrbit);
+
     if (date) simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
-    paused = !liveTracking || !date;
-    pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
+    paused = true;
+    pauseResumeButton.textContent = 'Propagate';
 }
 tleOrbitTab.addEventListener('click', () => switchOrbitTab('tle'));
 customOrbitTab.addEventListener('click', () => switchOrbitTab('custom'));
@@ -251,6 +255,7 @@ fetchTleButton.addEventListener('click', async () => {
         simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
         paused = false;
         pauseResumeButton.textContent = 'Pause';
+        activeSimulationControls.classList.remove('hidden');
     } catch (error) {
         tleFetchStatus.textContent = '';
         alert(error.message);
@@ -303,13 +308,16 @@ setOrbitButton.addEventListener('click', () => {
     simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     paused = false;
     pauseResumeButton.textContent = 'Pause';
+    activeSimulationControls.classList.remove('hidden');
 });
 
 liveTrackingToggle.addEventListener('change', () => {
     liveTracking = liveTrackingToggle.checked;
     timeStepControls.classList.toggle('hidden', liveTracking);
     timeDirectionSelect.classList.toggle('hidden', liveTracking);
-    paused = !liveTracking || !date;
+    const hasDefinedOrbit = customOrbit ? customOrbitDefined : satrec;
+    // Unpause if live tracking was enabled with this click and an orbit is defined for the current mode
+    paused = !liveTracking || !hasDefinedOrbit;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
 
@@ -364,7 +372,6 @@ setTimeBetweenButton.addEventListener('click', () => {
 });
 
 pauseResumeButton.addEventListener('click', () => {
-    if (!date) return;
     paused = !paused;
     pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });

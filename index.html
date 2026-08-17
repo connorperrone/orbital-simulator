@@ -150,16 +150,18 @@
                       <button id="setTimeBetweenButton">OK</button>
                   </div>
               </div>
-              <div class="group vertical" style="padding-top: 12px;">
-                  <label>Simulation Date</label>
-                  <span class="dataValue" id="simulationDateValue">N/A</span>
-              </div>
-              <div class="group" style="padding-top: 12px;">
-                  <button id="pauseResumeButton" style="flex: 1;">Pause</button>
-                  <select id="timeDirection" class="hidden" style="flex: 1;">
-                      <option value="Forward">Forward</option>
-                      <option value="Reverse">Reverse</option>
-                  </select>
+              <div id="activeSimulationControls" class="hidden">
+                  <div class="group vertical" style="padding-top: 12px;">
+                      <label>Simulation Date</label>
+                      <span class="dataValue" id="simulationDateValue">N/A</span>
+                  </div>
+                  <div class="group" style="padding-top: 12px;">
+                      <button id="pauseResumeButton" style="flex: 1;">Pause</button>
+                      <select id="timeDirection" class="hidden" style="flex: 1;">
+                          <option value="Forward">Forward</option>
+                          <option value="Reverse">Reverse</option>
+                      </select>
+                  </div>
               </div>
             </div>
         </div>
