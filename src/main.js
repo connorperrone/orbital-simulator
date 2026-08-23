@@ -315,6 +315,7 @@ liveTrackingToggle.addEventListener('change', () => {
     liveTracking = liveTrackingToggle.checked;
     timeStepControls.classList.toggle('hidden', liveTracking);
     timeDirectionSelect.classList.toggle('hidden', liveTracking);
+    if (!liveTracking) activeSimulationControls.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     const hasDefinedOrbit = customOrbit ? customOrbitDefined : satrec;
     // Unpause if live tracking was enabled with this click and an orbit is defined for the current mode
     paused = !liveTracking || !hasDefinedOrbit;
