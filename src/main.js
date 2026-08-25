@@ -22,12 +22,15 @@ const trueAnomalyInput = document.getElementById('trueAnomalyInput');
 const epochInput = document.getElementById('epochInput');
 const setOrbitButton = document.getElementById('setOrbitButton');
 
+const liveTrackingToggle = document.getElementById('liveTrackingToggle');
+const timeStepControls = document.getElementById('timeStepControls');
 const timeStepInput = document.getElementById('timeStepInput');
 const timeStepUnitSelect = document.getElementById('timeStepUnit');
 const setTimeStepButton = document.getElementById('setTimeStepButton');
 const timeBetweenInput = document.getElementById('timeBetweenInput');
 const timeBetweenUnitSelect = document.getElementById('timeBetweenUnit');
 const setTimeBetweenButton = document.getElementById('setTimeBetweenButton');
+const activeSimulationControls = document.getElementById('activeSimulationControls');
 const simulationDateValue = document.getElementById('simulationDateValue');
 const pauseResumeButton = document.getElementById('pauseResumeButton');
 const timeDirectionSelect = document.getElementById('timeDirection');
@@ -59,6 +62,7 @@ let tleMeanAnomalyAtEpoch;
 let tleMeanAnomaly;
 let tleTrueAnomaly;
 
+let customOrbitDefined = false;
 let customEpoch;
 let customSemiMajorAxis;
 let customEccentricity;
@@ -84,6 +88,7 @@ let satrec;
 let state;
 let date; // Simulation date
 let paused = true;
+let liveTracking = true;
 let propagateForward = true;
 let lastUpdate = 0;
 
@@ -134,6 +139,11 @@ function switchOrbitTab(newMode) {
             tleTrueAnomaly = calculateTleTrueAnomaly(state);
             meanAnomalyValue.textContent = (tleMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
             trueAnomalyValue.textContent = (tleTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+        } else {
+            scene.setSatellitePosition(0, 0, 0);
+            latitudeValue.textContent = '';
+            longitudeValue.textContent = '';
+            altitudeValue.textContent = '';
         }
     } else {
         scene.setMode('custom');
@@ -145,8 +155,7 @@ function switchOrbitTab(newMode) {
         scene.updateArgPerigee(customInclination ?? 0, customRaan ?? 0, customArgPerigee ?? 0);
         scene.updateNodes(customSemiMajorAxis ?? 6500, customEccentricity ?? 0, customInclination ?? 0, customRaan ?? 0, customArgPerigee ?? 0);
 
-        // If mean motion has been calculated, then a custom orbit was previously defined
-        if (customMeanMotion != null) {
+        if (customOrbitDefined) {
             const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
             const position = result.position;
             scene.setSatellitePosition(position.x, position.y, position.z);
@@ -164,7 +173,10 @@ function switchOrbitTab(newMode) {
 
     updateOrbitalElementsPanel(newMode);
 
-    if (date) simulationDateValue.textContent = date.toUTCString();
+    const hasDefinedOrbit = customOrbit ? customOrbitDefined : satrec;
+    activeSimulationControls.classList.toggle('hidden', !hasDefinedOrbit);
+
+    if (date) simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     paused = true;
     pauseResumeButton.textContent = 'Propagate';
 }
@@ -240,9 +252,10 @@ fetchTleButton.addEventListener('click', async () => {
         scene.updateNodes(tleSemiMajorAxis, tleEccentricity, tleInclination, tleRaan, tleArgPerigee);
 
         // Update Simulation Controls panel
-        simulationDateValue.textContent = date.toUTCString();
+        simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
         paused = false;
         pauseResumeButton.textContent = 'Pause';
+        activeSimulationControls.classList.remove('hidden');
     } catch (error) {
         tleFetchStatus.textContent = '';
         alert(error.message);
@@ -277,6 +290,7 @@ setOrbitButton.addEventListener('click', () => {
     updateOrbitalElementsPanel('custom');
 
     customOrbit = true;
+    customOrbitDefined = true;
     scene.updateOrbitShapeMesh(customSemiMajorAxis, customEccentricity);
     scene.updateInclination(customInclination, customRaan, customArgPerigee);
     scene.updateRaan(customInclination, customRaan, customArgPerigee);
@@ -291,9 +305,21 @@ setOrbitButton.addEventListener('click', () => {
     scene.updateSunPosition(satellite.sunPos(satellite.jday(date)));
 
     // Update Simulation Controls panel
-    simulationDateValue.textContent = date.toUTCString();
+    simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     paused = false;
     pauseResumeButton.textContent = 'Pause';
+    activeSimulationControls.classList.remove('hidden');
+});
+
+liveTrackingToggle.addEventListener('change', () => {
+    liveTracking = liveTrackingToggle.checked;
+    timeStepControls.classList.toggle('hidden', liveTracking);
+    timeDirectionSelect.classList.toggle('hidden', liveTracking);
+    if (!liveTracking) activeSimulationControls.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const hasDefinedOrbit = customOrbit ? customOrbitDefined : satrec;
+    // Unpause if live tracking was enabled with this click and an orbit is defined for the current mode
+    paused = !liveTracking || !hasDefinedOrbit;
+    pauseResumeButton.textContent = paused ? 'Propagate' : 'Pause';
 });
 
 setTimeStepButton.addEventListener('click', () => {
@@ -436,28 +462,33 @@ function animate(time) {
     // Propagate orbit if not paused and the update interval has passed
     if (!paused && time - lastUpdate >= updateIntervalMs) {
 
+        // Synchronizes date with current time if live tracking is enabled
+        if (liveTracking) date = new Date();
+
         // Update Earth's rotation and Sun's position
         const gmst = satellite.gstime(date);
         scene.updateEarthRotation(gmst);
         scene.updateSunPosition(satellite.sunPos(satellite.jday(date)));
 
         if (customOrbit) {
-            // Propagate with the custom orbital elements defined by the user
-            const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
-            const position = result.position;
-            customMeanAnomaly = result.meanAnomaly;
-            customTrueAnomaly = result.trueAnomaly;
+            if (customOrbitDefined) {
+                // Propagate with the custom orbital elements defined by the user
+                const result = propagateCustomOrbit(date, customEpoch, customMeanAnomalyAtEpoch, customMeanMotion, customEccentricity, customSemiMajorAxis);
+                const position = result.position;
+                customMeanAnomaly = result.meanAnomaly;
+                customTrueAnomaly = result.trueAnomaly;
 
-            // Update satellite position
-            scene.setSatellitePosition(position.x, position.y, position.z);
+                // Update satellite position
+                scene.setSatellitePosition(position.x, position.y, position.z);
 
-            // Update orbital elements panel
-            meanAnomalyValue.textContent = (customMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
-            trueAnomalyValue.textContent = (customTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
+                // Update orbital elements panel
+                meanAnomalyValue.textContent = (customMeanAnomaly * 180 / Math.PI).toFixed(3) + '°';
+                trueAnomalyValue.textContent = (customTrueAnomaly * 180 / Math.PI).toFixed(3) + '°';
 
-            // Update geodetic coordinates panel
-            const positionECI = scene.convertPQWToECI(position);
-            updateGeodeticCoordinatesPanel({x: positionECI.x * 1000, y: -positionECI.z * 1000, z: positionECI.y * 1000}, gmst);
+                // Update geodetic coordinates panel
+                const positionECI = scene.convertPQWToECI(position);
+                updateGeodeticCoordinatesPanel({x: positionECI.x * 1000, y: -positionECI.z * 1000, z: positionECI.y * 1000}, gmst);
+            }
         } else if (satrec) {
             // Propagate with TLE data if it exists
             state = satellite.propagate(satrec, date);
@@ -499,26 +530,28 @@ function animate(time) {
 
         // Update simulated time and lastUpdate variable
         lastUpdate = time;
-        switch (timeStepUnit) {
-            case milliseconds:
-                date.setMilliseconds(date.getMilliseconds() + signedTimeStep);
-                break;
-            case seconds:
-                date.setSeconds(date.getSeconds() + signedTimeStep);
-                break;
-            case minutes:
-                date.setMinutes(date.getMinutes() + signedTimeStep);
-                break;
-            case hours:
-                date.setHours(date.getHours() + signedTimeStep);
-                break;
-            default:
-                console.log('Invalid time step unit. Setting to seconds...');
-                timeStepUnit = seconds;
-                date.setSeconds(date.getSeconds() + signedTimeStep);
-                break;
+        if (!liveTracking) {
+            switch (timeStepUnit) {
+                case milliseconds:
+                    date.setMilliseconds(date.getMilliseconds() + signedTimeStep);
+                    break;
+                case seconds:
+                    date.setSeconds(date.getSeconds() + signedTimeStep);
+                    break;
+                case minutes:
+                    date.setMinutes(date.getMinutes() + signedTimeStep);
+                    break;
+                case hours:
+                    date.setHours(date.getHours() + signedTimeStep);
+                    break;
+                default:
+                    console.log('Invalid time step unit. Setting to seconds...');
+                    timeStepUnit = seconds;
+                    date.setSeconds(date.getSeconds() + signedTimeStep);
+                    break;
+            }
         }
-        simulationDateValue.textContent = date.toUTCString();
+        simulationDateValue.textContent = date.toLocaleString(undefined, { timeZoneName: 'short' });
     }
 
     scene.render();

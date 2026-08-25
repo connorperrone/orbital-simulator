@@ -20,6 +20,7 @@ Visualize and simulate orbits in an interactive 3D web application. Work with re
      - Define any orbit by its Keplerian orbital elements (semi-major axis, eccentricity, inclination, RAAN, argument of perigee, true anomaly)
      - Custom two-body propagation using the Newton-Raphson method to solve Kepler's equation (see [Methods](#methods))
 - **Simulation controls**:
+     - Live tracking feature (enabled by default) to synchronize simulation time with the system clock for live estimated orbital position
      - Configurable simulation time step and update rate with support for forward and reverse propagation
 - **Visualization of orbital elements**:
      - Toggleable visualizations of the orbit trajectory and plane, equatorial plane, perifocal coordinate system axes ($\hat{P}$, $\hat{Q}$, $\hat{W}$), Earth-centered inertial frame axes ($\hat{X}$, $\hat{Y}$, $\hat{Z}$), inclination, RAAN, argument of perigee, and more
