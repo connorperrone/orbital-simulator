@@ -9,7 +9,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 const sun = new THREE.DirectionalLight(0xFFFFFF, 3);
 const textureLoader = new THREE.TextureLoader();
 
-const maxOrbitPoints = 400;
+let maxOrbitPoints = 100; // The maximum number of orbit points to display
 
 let satelliteMesh, orbitPoints, orbitPointsIndex;
 
@@ -54,6 +54,12 @@ export function clearOrbitPoints() {
         orbitPoints.geometry.setAttribute('position', new THREE.BufferAttribute(orbitPointsPositions, 3));
     }
     orbitPointsIndex = 0;
+}
+
+export function setOrbitPointsCount(count) {
+    if (count === maxOrbitPoints) return;
+    maxOrbitPoints = count;
+    clearOrbitPoints();
 }
 
 function createOrbitShapeMesh() {
@@ -180,11 +186,11 @@ function onWindowResize() {
 
 export function setVisibility(buttonId, visible) {
     switch (buttonId) {
-        case 'earthVisibilityButton':
-            earthMesh.visible = visible;
-            break;
         case 'orbitShapeVisibilityButton':
             orbitShapeMesh.visible = visible;
+            break;
+        case 'orbitPointsControl':
+            orbitPoints.visible = visible;
             break;
         case 'equatorialPlaneVisibilityButton':
             equatorialPlaneMesh.visible = visible;
@@ -209,6 +215,9 @@ export function setVisibility(buttonId, visible) {
             break;
         case 'argPerigeeVisibilityButton':
             argPerigeeArcMesh.visible = visible;
+            break;
+        case 'earthVisibilityButton':
+            earthMesh.visible = visible;
             break;
         case 'nodesVisibilityButton':
             ascendingNodeMesh.visible = visible;

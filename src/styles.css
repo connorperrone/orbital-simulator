@@ -1,5 +1,6 @@
-﻿:root {
+:root {
   --theme-color: #00FFFF;
+  --hover-glow: 0 0 10px var(--theme-color);
   font-family: monospace;
 }
 
@@ -130,7 +131,7 @@ button {
 
 button:hover {
   background-color: var(--theme-color);
-  box-shadow: 0 0 10px var(--theme-color);
+  box-shadow: var(--hover-glow);
   color: #000000;
 }
 
@@ -191,10 +192,6 @@ option {
   opacity: 1.0;
 }
 
-.hidden {
-  display: none;
-}
-
 .halfColumnWidth {
   flex: 1 1 0%;
   min-width: 0;
@@ -228,10 +225,105 @@ option {
 
 .visibilityButton:hover {
   background-color: rgba(0, 255, 255, 0.2);
+  box-shadow: var(--hover-glow);
   color: #FFFFFF;
 }
 
 .visibilityButton.visible {
   background-color: rgba(0, 255, 255, 0.1);
   color: var(--theme-color);
+}
+
+.orbitPointsControl {
+  border: 1px solid var(--theme-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  gap: 0;
+  padding-right: 0;
+  user-select: none;
+}
+
+.orbitPointsControl.visible:not(:hover) .orbitPointsLabel {
+  opacity: 0.8;
+}
+
+.orbitPointsControl:not(.visible):not(:hover) .orbitPointsCountInput,
+.orbitPointsControl:not(.visible):not(:hover) .stepperButton {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.orbitPointsControl:hover .stepperButton {
+  opacity: 1;
+}
+
+.numberStepper {
+  align-items: center;
+  border-bottom-left-radius: 3px;
+  border-top-left-radius: 3px;
+  display: flex;
+  height: 100%;
+  transition: background-color 0.3s ease;
+}
+
+.numberStepper:focus-within {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.orbitPointsCountInput {
+  -moz-appearance: textfield;
+  background: transparent;
+  border: none;
+  flex-grow: 0;
+  font-weight: normal;
+  height: 100%;
+  padding: 0 8px 0 2px;
+  text-align: left;
+  width: 4ch;
+}
+
+.orbitPointsCountInput::-webkit-outer-spin-button,
+.orbitPointsCountInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stepperButtons {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.stepperButton {
+  align-items: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  height: 50%;
+  justify-content: center;
+  opacity: 0.85;
+  transition: all 0.3s ease;
+  width: 22px;
+}
+
+.stepperButton:first-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.stepperButton svg {
+  display: block;
+}
+
+.stepperButton:hover {
+  background-color: var(--theme-color);
+  color: #000000;
+  opacity: 1;
+}
+
+.hidden {
+  display: none;
 }

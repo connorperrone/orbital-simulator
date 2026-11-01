@@ -13,6 +13,11 @@ const noradIdInput = document.getElementById('noradIdInput');
 const fetchTleButton = document.getElementById('fetchTleButton');
 const tleFetchStatus = document.getElementById('tleFetchStatus');
 
+const orbitPointsControl = document.getElementById('orbitPointsControl');
+const orbitPointsCountInput = document.getElementById('orbitPointsCountInput');
+const orbitPointsStepUp = document.getElementById('orbitPointsStepUp');
+const orbitPointsStepDown = document.getElementById('orbitPointsStepDown');
+
 const semiMajorAxisInput = document.getElementById('semiMajorAxisInput');
 const eccentricityInput = document.getElementById('eccentricityInput');
 const inclinationInput = document.getElementById('inclinationInput');
@@ -488,6 +493,8 @@ function animate(time) {
                 // Update geodetic coordinates panel
                 const positionECI = scene.convertPQWToECI(position);
                 updateGeodeticCoordinatesPanel({x: positionECI.x * 1000, y: -positionECI.z * 1000, z: positionECI.y * 1000}, gmst);
+
+                scene.addOrbitPoint(positionECI.x, -positionECI.z, positionECI.y);
             }
         } else if (satrec) {
             // Propagate with TLE data if it exists
@@ -555,6 +562,20 @@ function animate(time) {
     }
 
     scene.render();
+}
+
+function setOrbitPointsVisible(visible) {
+    orbitPointsControl.classList.toggle('visible', visible);
+    scene.setVisibility('orbitPointsControl', visible);
+}
+
+function updateOrbitPointsCount(count) {
+    count = Math.min(Math.max(0, count || 0), 1000);
+    orbitPointsCountInput.value = count;
+
+    const visible = count > 0;
+    setOrbitPointsVisible(visible);
+    if (visible) scene.setOrbitPointsCount(count);
 }
 
 function initialize() {
@@ -626,13 +647,43 @@ function initialize() {
         });
     });
 
-    const visibilityButtons = document.querySelectorAll('.visibilityButton');
+    // Visibility toggle listener for everything except orbit points, which has its own listeners
+    const visibilityButtons = document.querySelectorAll('.visibilityButton:not(#orbitPointsControl)');
     visibilityButtons.forEach(button => {
         button.addEventListener('click', () => {
             const visible = button.classList.toggle('visible');
 
             scene.setVisibility(button.id, visible);
         });
+    });
+
+    orbitPointsControl.addEventListener('click', () => {
+        const wasVisible = orbitPointsControl.classList.contains('visible');
+        updateOrbitPointsCount(wasVisible ? 0 : Number(orbitPointsCountInput.step));
+    });
+
+    // Prevents this click from triggering the parent element's (orbitPointsControl) click listener
+    orbitPointsCountInput.addEventListener('click', (event) => {
+        event.stopPropagation();
+    });
+
+    orbitPointsCountInput.addEventListener('blur', () => updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber));
+    orbitPointsCountInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            orbitPointsCountInput.blur();
+        }
+    });
+
+    orbitPointsStepUp.addEventListener('click', (event) => {
+        event.stopPropagation();
+        orbitPointsCountInput.stepUp();
+        updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber);
+    });
+
+    orbitPointsStepDown.addEventListener('click', (event) => {
+        event.stopPropagation();
+        orbitPointsCountInput.stepDown();
+        updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber);
     });
 
     scene.startAnimationLoop(animate);

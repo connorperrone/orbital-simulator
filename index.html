@@ -73,10 +73,23 @@
           </div>
           <div class="panelContent">
             <div class="dataRow visibilityRow">
-              <span class="dataLabel">Core Visuals</span>
+              <span class="dataLabel">Orbit</span>
               <div class="group">
-                <button id="earthVisibilityButton" class="visibilityButton visible" title="Toggle Earth">Earth</button>
-                <button id="orbitShapeVisibilityButton" class="visibilityButton" title="Toggle Orbit Shape">Orbit</button>
+                <button id="orbitShapeVisibilityButton" class="visibilityButton" title="Toggle Orbit Shape">Shape</button>
+                <div id="orbitPointsControl" class="visibilityButton visible orbitPointsControl">
+                  <span class="orbitPointsLabel" title="Toggle Orbit Points">Points:</span>
+                  <div class="numberStepper">
+                    <input id="orbitPointsCountInput" class="orbitPointsCountInput" type="number" min="0" max="1000" step="10" value="100">
+                    <div class="stepperButtons">
+                      <span id="orbitPointsStepUp" class="stepperButton" title="Increase">
+                        <svg viewBox="0 0 10 6" width="10" height="6"><polygon points="0,6 5,0 10,6" fill="currentColor"/></svg>
+                      </span>
+                      <span id="orbitPointsStepDown" class="stepperButton" title="Decrease">
+                        <svg viewBox="0 0 10 6" width="10" height="6"><polygon points="0,0 10,0 5,6" fill="currentColor"/></svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -109,6 +122,7 @@
             <div class="dataRow visibilityRow">
               <span class="dataLabel">Misc.</span>
               <div class="group">
+                <button id="earthVisibilityButton" class="visibilityButton visible" title="Toggle Earth">Earth</button>
                 <button id="nodesVisibilityButton" class="visibilityButton" title="Toggle Line of Nodes">Nodes</button>
                 <button id="constellationsVisibilityButton" class="visibilityButton" title="Toggle Constellations">Constellations</button>
               </div>
