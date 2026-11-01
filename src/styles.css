@@ -105,6 +105,7 @@ input, select, button {
   border: 1px solid var(--theme-color);
   border-radius: 4px;
   color: #FFFFFF;
+  font-family: inherit;
   font-size: 13px;
   outline: none;
   padding: 8px;
