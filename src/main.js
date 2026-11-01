@@ -15,8 +15,6 @@ const tleFetchStatus = document.getElementById('tleFetchStatus');
 
 const orbitPointsControl = document.getElementById('orbitPointsControl');
 const orbitPointsCountInput = document.getElementById('orbitPointsCountInput');
-const orbitPointsStepUp = document.getElementById('orbitPointsStepUp');
-const orbitPointsStepDown = document.getElementById('orbitPointsStepDown');
 
 const semiMajorAxisInput = document.getElementById('semiMajorAxisInput');
 const eccentricityInput = document.getElementById('eccentricityInput');
@@ -578,6 +576,52 @@ function updateOrbitPointsCount(count) {
     if (visible) scene.setOrbitPointsCount(count);
 }
 
+// Uses custom stepper buttons template to replace default arrows in number inputs
+function addNumberSteppers() {
+    const template = document.getElementById('numberStepperTemplate');
+
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        const stepper = document.createElement('div');
+        stepper.className = 'numberStepper';
+        input.replaceWith(stepper);
+        stepper.append(input, template.content.cloneNode(true));
+
+        let repeatTimer;
+        const stopRepeat = () => clearTimeout(repeatTimer);
+
+        stepper.querySelectorAll('.stepperButton').forEach(button => {
+            const step = () => {
+                if (button.dataset.direction === 'up') {
+                    input.stepUp();
+                } else {
+                    input.stepDown();
+                }
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            const repeat = () => {
+                step();
+                repeatTimer = setTimeout(repeat, 50);
+            };
+
+            button.addEventListener('pointerdown', (event) => {
+                if (event.button !== 0) return;
+                step();
+                repeatTimer = setTimeout(repeat, 500);
+            });
+            button.addEventListener('pointerup', stopRepeat);
+            button.addEventListener('pointerleave', stopRepeat);
+            button.addEventListener('pointercancel', stopRepeat);
+        });
+
+        // Prevents stepper clicks from triggering parent element listeners (e.g. orbitPointsControl)
+        stepper.querySelector('.stepperButtons').addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+    });
+}
+
 function initialize() {
     scene.initializeScene();
 
@@ -667,24 +711,14 @@ function initialize() {
         event.stopPropagation();
     });
 
-    orbitPointsCountInput.addEventListener('blur', () => updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber));
+    orbitPointsCountInput.addEventListener('change', () => updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber));
     orbitPointsCountInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             orbitPointsCountInput.blur();
         }
     });
 
-    orbitPointsStepUp.addEventListener('click', (event) => {
-        event.stopPropagation();
-        orbitPointsCountInput.stepUp();
-        updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber);
-    });
-
-    orbitPointsStepDown.addEventListener('click', (event) => {
-        event.stopPropagation();
-        orbitPointsCountInput.stepDown();
-        updateOrbitPointsCount(orbitPointsCountInput.valueAsNumber);
-    });
+    addNumberSteppers();
 
     scene.startAnimationLoop(animate);
 }
