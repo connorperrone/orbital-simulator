@@ -1,6 +1,7 @@
 :root {
   --theme-color: #00FFFF;
   --hover-glow: 0 0 10px var(--theme-color);
+  color-scheme: dark;
   font-family: monospace;
 }
 
