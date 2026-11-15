@@ -80,6 +80,20 @@ src/
 
 ---
 
+## Assets
+
+All assets are located in the `assets` folder. Note that the exact 8192x4096 version of the Earth color map used is from August 2025 and may not be available at the time of writing this (November 2026). Credit for the star map and constellation figures goes to: "NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/Gaia/DPAC. Constellation figures based on those developed for the IAU by Alan MacRobert of Sky and Telescope magazine (Roger Sinnott and Rick Fienberg)."
+
+| Texture | File Name | Source |
+| ------- | --------- | ------ |
+| Earth Color Map | `assets/textures/earth_color_map.png` | "Land Surface, Ocean Color, and Sea Ice" from NASA's "The Blue Marble (2002): True-color global imagery at 1km resolution"|
+| Earth Topography Map | `assets/textures/earth_topography_map.jpg` | The 5400x2700 (8km/pixel) JPEG from NASA's "Blue Marble: Next Generation, Topography and Bathymetry Maps" |
+| Earth Cloud Map | `assets/textures/earth_cloud_map.jpg` | "Clouds" from NASA's "The Blue Marble (2002): True-color global imagery at 1km resolution"|
+| Star Map | `assets/textures/starmap_2020_4k.exr` | The 4096x2048 star map in celestial coordinates from NASA's "Deep Star Maps 2020" |
+| Constellation Figures | `assets/textures/constellation_figures_8k.jpg` | The 8192x4096 constellation figures in celestial coordinates TIFF (converted to JPEG) from NASA's "Deep Star Maps 2020" |
+
+---
+
 ## Run the Project Locally
 
 ```bash
