@@ -276,7 +276,7 @@ export function initializeScene() {
     const earthMaterial = new THREE.MeshPhongMaterial({
         map: textureLoader.load(new URL('../assets/textures/earth_color_map.png', import.meta.url).href),
         bumpMap: textureLoader.load(new URL('../assets/textures/earth_topography_map.jpg', import.meta.url).href),
-        bumpScale: 0.03,
+        bumpScale: 1.5,
     });
     earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     eciGroup.add(earthMesh);
